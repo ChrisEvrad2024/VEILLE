@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { ShoppingBag } from 'lucide-react';
 import { getCartItemCount } from '@/lib/cart';
 
-const CartIcon = async () => {
+const CartIcon =  () => {
   const [itemCount, setItemCount] = useState(0);
   
   useEffect(() => {
@@ -21,7 +21,7 @@ const CartIcon = async () => {
     window.addEventListener('storage', handleStorageChange);
     
     // Custom event for updates from the same window
-    const handleCartUpdate = async () => {
+    const handleCartUpdate =  () => {
       setItemCount(getCartItemCount());
     };
     

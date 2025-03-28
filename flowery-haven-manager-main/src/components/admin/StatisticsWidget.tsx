@@ -28,7 +28,7 @@ export function StatisticsWidget({
   // COLORS array for pie chart segments
   const COLORS = ['#4f46e5', '#22c55e', '#ef4444', '#f59e0b', '#06b6d4', '#8b5cf6'];
 
-  const renderChart = async () => {
+  const renderChart =  () => {
     switch (chartType) {
       case 'line':
         return (

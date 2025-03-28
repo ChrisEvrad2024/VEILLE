@@ -11,34 +11,29 @@ import { dashboardService } from './dashboard.service';
 import { cmsService } from './cms.service';
 import { ratingService } from './rating.service';
 import { userManagementService } from './user-management.service';
+import { addressService } from './address.service';
 
 // Adaptateur pour lib/cart.ts
 export const cartAdapter = {
-    getCart: async () => {
-        const cartItems = await cartService.getCart();
-        return cartItems.map(item => ({
-            product: item.product,
-            quantity: item.quantity
-        }));
-    },
-    addToCart: async (product, quantity = 1) => {
-        return await cartService.addToCart(product.id, quantity);
-    },
-    updateCartItemQuantity: async (productId, quantity) => {
-        return await cartService.updateCartItemQuantity(productId, quantity);
-    },
-    removeFromCart: async (productId) => {
-        return await cartService.removeFromCart(productId);
-    },
-    clearCart: async () => {
-        return await cartService.clearCart();
-    },
-    getCartTotal: async () => {
-        return await cartService.getCartTotal();
-    },
-    getCartItemCount: async () => {
-        return await cartService.getCartItemCount();
-    }
+    getCart: () => cartService.getCart(),
+    addToCart: (productId: string, quantity: number) => cartService.addToCart(productId, quantity),
+    updateCartItem: (cartItemId: string, quantity: number) => cartService.updateCartItemQuantity(cartItemId, quantity),
+    removeFromCart: (cartItemId: string) => cartService.removeFromCart(cartItemId),
+    clearCart: () => cartService.clearCart(),
+    getCartTotal: () => cartService.getCartTotal(),
+    getCartItemCount: () => cartService.getCartItemCount(),
+    // applyPromoCode: (code: string) => cartService.applyPromoCode(code),
+};
+
+// Address adapter
+export const addressAdapter = {
+    getUserAddresses: () => addressService.getUserAddresses(),
+    getAddressesByType: (type: "shipping" | "billing") => addressService.getAddressesByType(type),
+    getDefaultAddress: (type: "shipping" | "billing") => addressService.getDefaultAddress(type),
+    addAddress: (addressData: any) => addressService.addAddress(addressData),
+    updateAddress: (addressId: string, addressData: any) => addressService.updateAddress(addressId, addressData),
+    deleteAddress: (addressId: string) => addressService.deleteAddress(addressId),
+    setDefaultAddress: (addressId: string) => addressService.setDefaultAddress(addressId),
 };
 
 // Adaptateur pour lib/wishlist.ts

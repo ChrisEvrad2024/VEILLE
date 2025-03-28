@@ -100,7 +100,7 @@ export function ProductForm({ product, categories, onSubmit, onCancel }: Product
   };
 
   // Add image to the list
-  const handleAddImage = async () => {
+  const handleAddImage =  () => {
     if (imageUrl && !images.includes(imageUrl)) {
       setImages([...images, imageUrl]);
       setImageUrl("");

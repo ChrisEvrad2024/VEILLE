@@ -26,7 +26,7 @@ export const BlogPostCard = ({ post, onTagClick, onViewPost }: BlogPostCardProps
     }
   };
   
-  const handleViewPost = async () => {
+  const handleViewPost =  () => {
     if (onViewPost) {
       onViewPost(post);
     } else {

@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -17,6 +16,7 @@ import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Eye, EyeOff } from "lucide-react";
+import { authService } from "@/services/auth.service";
 
 // Profile form schema
 const profileFormSchema = z.object({
@@ -38,11 +38,10 @@ const passwordFormSchema = z.object({
   path: ["confirmPassword"],
 });
 
-const ProfileSettings = async () => {
+const ProfileSettings =  () => {
   const [userData, setUserData] = useState(() => {
-    // Get user data from localStorage
-    const user = localStorage.getItem("user");
-    return user ? JSON.parse(user) : null;
+    // Get user data from auth service
+    return authService.getCurrentUser();
   });
   
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
@@ -72,18 +71,39 @@ const ProfileSettings = async () => {
     },
   });
 
+  // Update form values when userData changes
+  useEffect(() => {
+    if (userData) {
+      profileForm.reset({
+        firstName: userData.firstName || "",
+        lastName: userData.lastName || "",
+        email: userData.email || "",
+        phone: userData.phone || "",
+      });
+    }
+  }, [userData, profileForm]);
+
+  // Profile form submission handler
   // Profile form submission handler
   const onSubmitProfile = async (data: z.infer<typeof profileFormSchema>) => {
     setIsUpdatingProfile(true);
     
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Use auth service to update profile
+      const updatedUser = await authService.updateUserProfile({
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        // Only include phone if provided
+        ...(data.phone ? { phone: data.phone } : {})
+      });
       
-      // Update localStorage
-      const updatedUser = { ...userData, ...data };
-      localStorage.setItem("user", JSON.stringify(updatedUser));
+      // Store updated user in state and localStorage (for immediate persistence)
       setUserData(updatedUser);
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+      
+      // Dispatch a storage event to notify other components about the change
+      window.dispatchEvent(new Event('storage'));
       
       toast.success("Profil mis à jour", {
         description: "Vos informations personnelles ont été mises à jour avec succès.",
@@ -91,7 +111,7 @@ const ProfileSettings = async () => {
     } catch (error) {
       console.error("Profile update error:", error);
       toast.error("Échec de la mise à jour", {
-        description: "Une erreur s'est produite. Veuillez réessayer.",
+        description: error instanceof Error ? error.message : "Une erreur s'est produite. Veuillez réessayer.",
       });
     } finally {
       setIsUpdatingProfile(false);
@@ -103,8 +123,11 @@ const ProfileSettings = async () => {
     setIsUpdatingPassword(true);
     
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Use auth service to update password
+      await authService.updateUserProfile({
+        currentPassword: data.currentPassword,
+        newPassword: data.newPassword
+      });
       
       toast.success("Mot de passe mis à jour", {
         description: "Votre mot de passe a été modifié avec succès.",
@@ -119,7 +142,7 @@ const ProfileSettings = async () => {
     } catch (error) {
       console.error("Password update error:", error);
       toast.error("Échec de la mise à jour", {
-        description: "Une erreur s'est produite. Veuillez réessayer.",
+        description: error instanceof Error ? error.message : "Une erreur s'est produite. Veuillez réessayer.",
       });
     } finally {
       setIsUpdatingPassword(false);

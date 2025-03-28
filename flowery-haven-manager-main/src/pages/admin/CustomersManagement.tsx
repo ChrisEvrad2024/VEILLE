@@ -134,7 +134,7 @@ const sampleCustomers: Customer[] = [
   }
 ];
 
-const CustomersManagement = async () => {
+const CustomersManagement =  () => {
   const [customers, setCustomers] = useState<Customer[]>(sampleCustomers);
   const [searchQuery, setSearchQuery] = useState("");
   

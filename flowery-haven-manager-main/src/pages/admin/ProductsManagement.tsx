@@ -42,7 +42,7 @@ import { ProductForm } from "@/components/admin/ProductForm";
 import { Product } from "@/types/product";
 import { getAllProducts, getAllCategories } from "@/lib/data";
 
-const ProductsManagement = async () => {
+const ProductsManagement =  () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -76,7 +76,7 @@ const ProductsManagement = async () => {
   };
   
   // Handle adding new product
-  const handleAddProduct = async () => {
+  const handleAddProduct =  () => {
     setEditingProduct(null);
     setIsDialogOpen(true);
   };

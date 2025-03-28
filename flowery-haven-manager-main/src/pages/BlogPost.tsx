@@ -37,7 +37,7 @@ import { toast } from "sonner";
 import { getAllProducts, getProductsByCategory } from "@/lib/data";
 import ProductCard from "@/components/shared/ProductCard";
 
-const BlogPostPage = async () => {
+const BlogPostPage =  () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [post, setPost] = useState<BlogPost | null>(null);
@@ -70,7 +70,7 @@ const BlogPostPage = async () => {
     setIsLoading(false);
   }, [id, navigate]);
 
-  const handleBackToBlog = async () => {
+  const handleBackToBlog =  () => {
     navigate("/blog");
   };
 
@@ -172,7 +172,7 @@ const BlogPostPage = async () => {
   };
 
   // Cancel reply
-  const cancelReply = async () => {
+  const cancelReply =  () => {
     setReplyingTo(null);
   };
 

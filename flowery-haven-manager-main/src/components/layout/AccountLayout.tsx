@@ -8,7 +8,7 @@ import Footer from "./Footer";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
-const AccountLayout = async () => {
+const AccountLayout =  () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [userData, setUserData] = useState<any>(null);
@@ -35,7 +35,7 @@ const AccountLayout = async () => {
   }, [navigate, location.pathname]);
 
   // Logout handler
-  const handleLogout = async () => {
+  const handleLogout =  () => {
     localStorage.removeItem("isAuthenticated");
     localStorage.removeItem("user");
     

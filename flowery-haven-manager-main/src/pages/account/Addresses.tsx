@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   Card, 
   CardContent, 
@@ -59,68 +58,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-
-// Define address type
-type Address = {
-  id: string;
-  nickname: string;
-  type: "shipping" | "billing";
-  firstName: string;
-  lastName: string;
-  addressLine1: string;
-  addressLine2: string;
-  city: string;
-  postalCode: string;
-  country: string;
-  phone: string;
-  isDefault: boolean;
-};
-
-// Mock addresses data
-const initialAddresses: Address[] = [
-  {
-    id: "addr-1",
-    nickname: "Domicile",
-    type: "shipping",
-    firstName: "Jean",
-    lastName: "Dupont",
-    addressLine1: "123 Rue de Paris",
-    addressLine2: "Apt 4B",
-    city: "Paris",
-    postalCode: "75001",
-    country: "France",
-    phone: "0123456789",
-    isDefault: true,
-  },
-  {
-    id: "addr-2",
-    nickname: "Bureau",
-    type: "shipping",
-    firstName: "Jean",
-    lastName: "Dupont",
-    addressLine1: "45 Avenue des Champs-Élysées",
-    addressLine2: "Étage 3",
-    city: "Paris",
-    postalCode: "75008",
-    country: "France",
-    phone: "0123456789",
-    isDefault: false,
-  },
-  {
-    id: "addr-3",
-    nickname: "Facturation",
-    type: "billing",
-    firstName: "Jean",
-    lastName: "Dupont",
-    addressLine1: "123 Rue de Paris",
-    addressLine2: "Apt 4B",
-    city: "Paris",
-    postalCode: "75001",
-    country: "France",
-    phone: "0123456789",
-    isDefault: true,
-  },
-];
+import { addressService, Address } from "@/services/address.service";
 
 // Address form schema
 const addressFormSchema = z.object({
@@ -137,10 +75,12 @@ const addressFormSchema = z.object({
   isDefault: z.boolean().default(false),
 });
 
-const Addresses = async () => {
-  const [addresses, setAddresses] = useState<Address[]>(initialAddresses);
+const Addresses = () => {
+  const [addresses, setAddresses] = useState<Address[]>([]);
   const [editingAddress, setEditingAddress] = useState<Address | null>(null);
   const [openDialog, setOpenDialog] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Initialize the form
   const form = useForm<z.infer<typeof addressFormSchema>>({
@@ -160,8 +100,26 @@ const Addresses = async () => {
     },
   });
 
+  // Load addresses
+  useEffect(() => {
+    const loadAddresses = async () => {
+      try {
+        setIsLoading(true);
+        const userAddresses = await addressService.getUserAddresses();
+        setAddresses(userAddresses);
+      } catch (error) {
+        console.error("Error loading addresses:", error);
+        toast.error("Erreur lors du chargement des adresses");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadAddresses();
+  }, []);
+
   // Open dialog for adding a new address
-  const handleAddAddress = async () => {
+  const handleAddAddress = () => {
     form.reset({
       nickname: "",
       type: "shipping",
@@ -187,7 +145,7 @@ const Addresses = async () => {
       firstName: address.firstName,
       lastName: address.lastName,
       addressLine1: address.addressLine1,
-      addressLine2: address.addressLine2,
+      addressLine2: address.addressLine2 || "",
       city: address.city,
       postalCode: address.postalCode,
       country: address.country,
@@ -199,72 +157,82 @@ const Addresses = async () => {
   };
 
   // Handle address deletion
-  const handleDeleteAddress = (id: string) => {
-    setAddresses(addresses.filter((addr) => addr.id !== id));
-    toast.success("Adresse supprimée", {
-      description: "L'adresse a été supprimée avec succès.",
-    });
+  const handleDeleteAddress = async (id: string) => {
+    try {
+      await addressService.deleteAddress(id);
+      setAddresses(addresses.filter((addr) => addr.id !== id));
+      toast.success("Adresse supprimée", {
+        description: "L'adresse a été supprimée avec succès.",
+      });
+    } catch (error) {
+      console.error("Error deleting address:", error);
+      toast.error("Erreur lors de la suppression de l'adresse", {
+        description: error instanceof Error ? error.message : "Une erreur s'est produite",
+      });
+    }
   };
 
   // Handle form submission
-  const onSubmit = (data: z.infer<typeof addressFormSchema>) => {
-    // Check if this is a default address
-    if (data.isDefault) {
+  const onSubmit = async (data: z.infer<typeof addressFormSchema>) => {
+    setIsSubmitting(true);
+    
+    try {
+      if (editingAddress) {
+        // Update existing address
+        const updatedAddress = await addressService.updateAddress(editingAddress.id, data);
+        setAddresses(addresses.map((addr) => 
+          addr.id === editingAddress.id ? updatedAddress : addr
+        ));
+        toast.success("Adresse mise à jour", {
+          description: "Vos modifications ont été enregistrées.",
+        });
+      } else {
+        // Add new address
+        const newAddress = await addressService.addAddress(data);
+        setAddresses([...addresses, newAddress]);
+        toast.success("Adresse ajoutée", {
+          description: "La nouvelle adresse a été ajoutée avec succès.",
+        });
+      }
+      
+      setOpenDialog(false);
+    } catch (error) {
+      console.error("Error saving address:", error);
+      toast.error("Erreur lors de l'enregistrement de l'adresse", {
+        description: error instanceof Error ? error.message : "Une erreur s'est produite",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Set an address as default
+  const handleSetDefault = async (address: Address) => {
+    if (address.isDefault) return; // Already default
+    
+    try {
+      const updatedAddress = await addressService.setDefaultAddress(address.id);
       setAddresses(addresses.map((addr) => {
-        if (addr.type === data.type && (!editingAddress || addr.id !== editingAddress.id)) {
+        // Update the current address to be default
+        if (addr.id === address.id) {
+          return updatedAddress;
+        }
+        // Set other addresses of the same type to non-default
+        if (addr.type === address.type && addr.isDefault) {
           return { ...addr, isDefault: false };
         }
         return addr;
       }));
-    }
-
-    if (editingAddress) {
-      // Update existing address
-      setAddresses(addresses.map((addr) => {
-        if (addr.id === editingAddress.id) {
-          return { 
-            id: addr.id,
-            nickname: data.nickname,
-            type: data.type,
-            firstName: data.firstName,
-            lastName: data.lastName,
-            addressLine1: data.addressLine1,
-            addressLine2: data.addressLine2 || "",
-            city: data.city,
-            postalCode: data.postalCode,
-            country: data.country,
-            phone: data.phone,
-            isDefault: data.isDefault
-          };
-        }
-        return addr;
-      }));
-      toast.success("Adresse mise à jour", {
-        description: "Vos modifications ont été enregistrées.",
+      
+      toast.success("Adresse par défaut mise à jour", {
+        description: `Cette adresse est maintenant votre adresse ${address.type === 'shipping' ? 'de livraison' : 'de facturation'} par défaut.`,
       });
-    } else {
-      // Add new address
-      const newAddress: Address = {
-        id: `addr-${Date.now()}`,
-        nickname: data.nickname,
-        type: data.type,
-        firstName: data.firstName,
-        lastName: data.lastName,
-        addressLine1: data.addressLine1,
-        addressLine2: data.addressLine2 || "",
-        city: data.city,
-        postalCode: data.postalCode,
-        country: data.country,
-        phone: data.phone,
-        isDefault: data.isDefault
-      };
-      setAddresses([...addresses, newAddress]);
-      toast.success("Adresse ajoutée", {
-        description: "La nouvelle adresse a été ajoutée avec succès.",
+    } catch (error) {
+      console.error("Error setting default address:", error);
+      toast.error("Erreur lors de la mise à jour de l'adresse par défaut", {
+        description: error instanceof Error ? error.message : "Une erreur s'est produite",
       });
     }
-
-    setOpenDialog(false);
   };
 
   // Get shipping and billing addresses
@@ -280,61 +248,74 @@ const Addresses = async () => {
         </p>
       </div>
 
-      {/* Shipping Addresses */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-medium">Adresses de livraison</h2>
-          <Button size="sm" onClick={handleAddAddress}>
-            <Plus className="h-4 w-4 mr-2" />
-            Ajouter une adresse
-          </Button>
-        </div>
-
-        {shippingAddresses.length === 0 ? (
-          <Alert>
-            <AlertDescription>
-              Vous n'avez pas encore ajouté d'adresse de livraison.
-            </AlertDescription>
-          </Alert>
-        ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {shippingAddresses.map((address) => (
-              <AddressCard 
-                key={address.id} 
-                address={address} 
-                onEdit={() => handleEditAddress(address)}
-                onDelete={() => handleDeleteAddress(address.id)}
-              />
-            ))}
+      {isLoading ? (
+        <div className="py-12 text-center">
+          <div className="flex justify-center items-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           </div>
-        )}
-      </div>
-
-      {/* Billing Addresses */}
-      <div className="space-y-4 pt-6 border-t">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-medium">Adresses de facturation</h2>
+          <p className="mt-2 text-sm text-muted-foreground">Chargement des adresses...</p>
         </div>
+      ) : (
+        <>
+          {/* Shipping Addresses */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-medium">Adresses de livraison</h2>
+              <Button size="sm" onClick={handleAddAddress}>
+                <Plus className="h-4 w-4 mr-2" />
+                Ajouter une adresse
+              </Button>
+            </div>
 
-        {billingAddresses.length === 0 ? (
-          <Alert>
-            <AlertDescription>
-              Vous n'avez pas encore ajouté d'adresse de facturation.
-            </AlertDescription>
-          </Alert>
-        ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {billingAddresses.map((address) => (
-              <AddressCard 
-                key={address.id} 
-                address={address} 
-                onEdit={() => handleEditAddress(address)} 
-                onDelete={() => handleDeleteAddress(address.id)}
-              />
-            ))}
+            {shippingAddresses.length === 0 ? (
+              <Alert>
+                <AlertDescription>
+                  Vous n'avez pas encore ajouté d'adresse de livraison.
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {shippingAddresses.map((address) => (
+                  <AddressCard 
+                    key={address.id} 
+                    address={address} 
+                    onEdit={() => handleEditAddress(address)}
+                    onDelete={() => handleDeleteAddress(address.id)}
+                    onSetDefault={() => handleSetDefault(address)}
+                  />
+                ))}
+              </div>
+            )}
           </div>
-        )}
-      </div>
+
+          {/* Billing Addresses */}
+          <div className="space-y-4 pt-6 border-t">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-medium">Adresses de facturation</h2>
+            </div>
+
+            {billingAddresses.length === 0 ? (
+              <Alert>
+                <AlertDescription>
+                  Vous n'avez pas encore ajouté d'adresse de facturation.
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {billingAddresses.map((address) => (
+                  <AddressCard 
+                    key={address.id} 
+                    address={address} 
+                    onEdit={() => handleEditAddress(address)} 
+                    onDelete={() => handleDeleteAddress(address.id)}
+                    onSetDefault={() => handleSetDefault(address)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </>
+      )}
 
       {/* Address Form Dialog */}
       <Dialog open={openDialog} onOpenChange={setOpenDialog}>
@@ -532,8 +513,11 @@ const Addresses = async () => {
                 <DialogClose asChild>
                   <Button type="button" variant="outline">Annuler</Button>
                 </DialogClose>
-                <Button type="submit">
-                  {editingAddress ? "Mettre à jour" : "Ajouter"}
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting 
+                    ? (editingAddress ? "Mise à jour..." : "Ajout...") 
+                    : (editingAddress ? "Mettre à jour" : "Ajouter")
+                  }
                 </Button>
               </DialogFooter>
             </form>
@@ -548,20 +532,29 @@ const Addresses = async () => {
 const AddressCard = ({ 
   address, 
   onEdit, 
-  onDelete 
+  onDelete,
+  onSetDefault
 }: { 
   address: Address; 
   onEdit: () => void; 
   onDelete: () => void;
+  onSetDefault: () => void;
 }) => {
   return (
-    <Card>
+    <Card className={address.isDefault ? "border-primary/50 shadow-md" : ""}>
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between">
           <div>
-            <CardTitle className="text-base">{address.nickname}</CardTitle>
+            <CardTitle className="text-base flex items-center gap-2">
+              {address.nickname}
+              {address.isDefault && (
+                <span className="text-xs px-2 py-0.5 bg-primary/10 text-primary rounded-full">
+                  défaut
+                </span>
+              )}
+            </CardTitle>
             <CardDescription>
-              {address.isDefault && `Adresse ${address.type === 'shipping' ? 'de livraison' : 'de facturation'} par défaut`}
+              {address.type === 'shipping' ? 'Adresse de livraison' : 'Adresse de facturation'}
             </CardDescription>
           </div>
           <DropdownMenu>
@@ -575,6 +568,12 @@ const AddressCard = ({
                 <PenLine className="h-4 w-4 mr-2" />
                 Modifier
               </DropdownMenuItem>
+              {!address.isDefault && (
+                <DropdownMenuItem onClick={onSetDefault}>
+                  <span className="h-4 w-4 mr-2">✓</span>
+                  Définir par défaut
+                </DropdownMenuItem>
+              )}
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <DropdownMenuItem onSelect={(e) => e.preventDefault()}>

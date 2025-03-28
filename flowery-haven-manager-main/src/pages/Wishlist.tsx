@@ -20,11 +20,11 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-const Wishlist = async () => {
+const Wishlist =  () => {
   const [wishlistItems, setWishlistItems] = useState<any[]>([]);
   
   useEffect(() => {
-    const loadWishlist = async () => {
+    const loadWishlist =  () => {
       const items = getWishlist();
       setWishlistItems(items);
     };
@@ -70,7 +70,7 @@ const Wishlist = async () => {
     });
   };
 
-  const handleClearWishlist = async () => {
+  const handleClearWishlist =  () => {
     clearWishlist();
     setWishlistItems([]);
     toast.info("Wishlist vidée", {
@@ -79,7 +79,7 @@ const Wishlist = async () => {
     });
   };
 
-  const handleAddAllToCart = async () => {
+  const handleAddAllToCart =  () => {
     wishlistItems.forEach(item => {
       handleAddToCart(item);
     });

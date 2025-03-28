@@ -1,5 +1,4 @@
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Product } from '@/types/product';
 import { ShoppingBag, Heart, CheckCircle, XCircle } from 'lucide-react';
@@ -12,13 +11,23 @@ interface ProductCardProps {
 
 const ProductCard = ({ product }: ProductCardProps) => {
   const [isHovered, setIsHovered] = useState(false);
-  const [inWishlist, setInWishlist] = useState(isInWishlist(product.id));
+  const [inWishlist, setInWishlist] = useState(false);
+  
+  // Vérifier si le produit est dans la liste de souhaits au chargement
+  useEffect(() => {
+    const checkWishlist = async () => {
+      const isInList = await wishlistService.isInWishlist(product.id);
+      setInWishlist(isInList);
+    };
+    
+    checkWishlist();
+  }, [product.id]);
 
-  const quickAddToCart = (e: React.MouseEvent) => {
+  const quickAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
-    addToCart(product, 1);
+    await cartService.addToCart(product.id, 1);
     
     // Dispatch custom event to update cart icon
     window.dispatchEvent(new Event('cartUpdated'));
@@ -29,20 +38,21 @@ const ProductCard = ({ product }: ProductCardProps) => {
     });
   };
   
-  const toggleWishlist = (e: React.MouseEvent) => {
+  const toggleWishlist = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
     if (inWishlist) {
-      removeFromWishlist(product.id);
+      await wishlistService.removeFromWishlist(product.id);
       setInWishlist(false);
       toast.info("Retiré des favoris", {
         description: `${product.name} a été retiré de vos favoris.`,
         duration: 3000,
       });
     } else {
-      addToWishlist({
+      await wishlistService.addToWishlist({
         id: product.id,
+        productId: product.id,
         name: product.name,
         price: product.price,
         image: product.images[0]
@@ -53,6 +63,9 @@ const ProductCard = ({ product }: ProductCardProps) => {
         duration: 3000,
       });
     }
+    
+    // Dispatch custom event to update wishlist icon if needed
+    window.dispatchEvent(new Event('wishlistUpdated'));
   };
 
   const isInStock = product.stock === undefined || product.stock > 0;

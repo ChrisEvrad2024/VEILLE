@@ -1,4 +1,3 @@
-
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import Hero from '@/components/home/Hero';
@@ -6,7 +5,8 @@ import FeaturedProducts from '@/components/home/FeaturedProducts';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 
-const Index = async () => {
+// Composant correctement défini sans async
+const Index = () => {
   return (
     <>
       <Navbar />

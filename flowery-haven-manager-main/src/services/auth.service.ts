@@ -359,6 +359,7 @@ const disableTwoFactorAuth = async (password: string): Promise<boolean> => {
 };
 
 // Mettre à jour le profil de l'utilisateur
+// Mettre à jour le profil de l'utilisateur
 const updateUserProfile = async (updates: ProfileUpdate): Promise<Omit<User, 'password'>> => {
     try {
         const currentUser = getCurrentUser();
@@ -397,15 +398,21 @@ const updateUserProfile = async (updates: ProfileUpdate): Promise<Omit<User, 'pa
             firstName: updates.firstName || user.firstName,
             lastName: updates.lastName || user.lastName,
             email: updates.email || user.email,
-            password: updates.newPassword || user.password
+            password: updates.newPassword || user.password,
+            // Préserver les champs existants comme phone s'ils existent
+            ...(user.phone && !('phone' in updates) ? { phone: user.phone } : {}),
+            ...(updates.phone ? { phone: updates.phone } : {})
         };
 
-        // Mettre à jour l'utilisateur
-        await dbService.updateItem("users", updatedUser);
+        // Mettre à jour l'utilisateur dans IndexedDB
+        await dbService.updateItem<User>("users", updatedUser);
 
         // Mettre à jour la session
-        const { password, ...sessionUser } = updatedUser;
+        const { password, resetToken, resetTokenExpiry, twoFactorSecret, ...sessionUser } = updatedUser;
         localStorage.setItem("user", JSON.stringify(sessionUser));
+        
+        // Émettre un événement pour notifier les autres composants des changements
+        window.dispatchEvent(new Event('storage'));
 
         return sessionUser;
     } catch (error) {

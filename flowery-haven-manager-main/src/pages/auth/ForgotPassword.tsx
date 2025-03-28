@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { z } from "zod";
@@ -17,13 +16,15 @@ import {
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { ArrowLeft, CheckCircle2 } from "lucide-react";
+import { authAdapter } from "@/services/adapters";
 
 // Define form schema
 const formSchema = z.object({
   email: z.string().email("Adresse email invalide"),
 });
 
-const ForgotPassword = async () => {
+// IMPORTANT: Removed 'async' from the component definition
+const ForgotPassword = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
@@ -40,20 +41,17 @@ const ForgotPassword = async () => {
     setIsLoading(true);
     
     try {
-      // Simulate API call
-      console.log("Password reset request for:", data.email);
+      // Use auth adapter to request password reset
+      await authAdapter.requestPasswordReset(data.email);
       
-      // For demo purposes, we'll just simulate a successful submission
-      setTimeout(() => {
-        setIsSubmitted(true);
-        toast.success("Email envoyé", {
-          description: "Consultez votre boîte de réception pour réinitialiser votre mot de passe",
-        });
-      }, 1000);
+      setIsSubmitted(true);
+      toast.success("Email envoyé", {
+        description: "Consultez votre boîte de réception pour réinitialiser votre mot de passe",
+      });
     } catch (error) {
       console.error("Password reset error:", error);
       toast.error("Échec de l'envoi", {
-        description: "Une erreur s'est produite. Veuillez réessayer.",
+        description: error instanceof Error ? error.message : "Une erreur s'est produite. Veuillez réessayer.",
       });
     } finally {
       setIsLoading(false);

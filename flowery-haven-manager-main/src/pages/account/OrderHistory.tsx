@@ -84,7 +84,7 @@ const statusConfig = {
   }
 };
 
-const OrderHistory = async () => {
+const OrderHistory =  () => {
   const [activeTab, setActiveTab] = useState("all");
   
   // Filter orders based on active tab

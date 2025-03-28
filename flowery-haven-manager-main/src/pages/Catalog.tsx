@@ -7,7 +7,7 @@ import Footer from '@/components/layout/Footer';
 import ProductCard from '@/components/shared/ProductCard';
 import { Filter } from 'lucide-react';
 
-const Catalog = async () => {
+const Catalog =  () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState(getAllProducts());
   const categories = getAllCategories();
@@ -26,7 +26,7 @@ const Catalog = async () => {
     setSearchParams({ category: categoryId });
   };
   
-  const clearFilters = async () => {
+  const clearFilters =  () => {
     setSearchParams({});
   };
   

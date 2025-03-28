@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { z } from "zod";
@@ -17,6 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Eye, EyeOff } from "lucide-react";
+import { authAdapter } from "@/services/adapters";
 
 // Define form schema
 const formSchema = z.object({
@@ -24,7 +24,8 @@ const formSchema = z.object({
   password: z.string().min(1, "Le mot de passe est requis"),
 });
 
-const Login = async () => {
+// IMPORTANT: Removed 'async' from the component definition
+const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
@@ -45,59 +46,31 @@ const Login = async () => {
     setIsLoading(true);
     
     try {
-      // Check for admin user (admin@admin.com with any password)
-      // Using toLowerCase() to ensure case-insensitive comparison
-      if (data.email.toLowerCase() === "admin@admin.com") {
-        console.log("Admin login detected");
-        
-        // Set admin user in localStorage
-        localStorage.setItem("isAuthenticated", "true");
-        localStorage.setItem("user", JSON.stringify({ 
-          email: data.email,
-          role: "admin",
-          name: "Administrateur",
-          createdAt: new Date().toISOString()
-        }));
-        
-        toast.success("Connexion administrateur réussie", {
-          description: "Bienvenue dans l'interface d'administration",
-        });
-        
-        // Force navigation to admin dashboard with a slight delay to ensure localStorage is set
-        setTimeout(() => {
-          navigate("/admin");
-        }, 200);
-        
-        return;
-      }
+      // Use auth adapter to login
+      await authAdapter.login(data.email, data.password);
       
-      // For regular users (simulated login)
-      console.log("Regular login attempt:", data.email);
-      
-      localStorage.setItem("isAuthenticated", "true");
-      localStorage.setItem("user", JSON.stringify({ 
-        email: data.email,
-        role: "customer",
-        name: data.email.split('@')[0],
-        createdAt: new Date().toISOString()
-      }));
+      // Check if user is admin to determine redirect
+      const isAdmin = authAdapter.isAdmin();
       
       toast.success("Connexion réussie", {
-        description: "Bienvenue sur votre compte Floralie",
+        description: isAdmin 
+          ? "Bienvenue dans l'interface d'administration" 
+          : "Bienvenue sur votre compte Floralie",
       });
       
-      navigate(from === "/admin" ? "/" : from);
+      // Redirect to admin dashboard or previous page
+      navigate(isAdmin ? "/admin" : from);
     } catch (error) {
       console.error("Login error:", error);
       toast.error("Échec de la connexion", {
-        description: "Vérifiez vos identifiants et réessayez",
+        description: error instanceof Error ? error.message : "Vérifiez vos identifiants et réessayez",
       });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const togglePasswordVisibility = async () => setShowPassword(!showPassword);
+  const togglePasswordVisibility = () => setShowPassword(!showPassword);
 
   return (
     <AuthLayout
@@ -183,9 +156,9 @@ const Login = async () => {
       </div>
       
       <div className="mt-8 p-4 bg-muted rounded-md">
-        <p className="text-sm text-center font-medium">Accès administrateur</p>
+        <p className="text-sm text-center font-medium">CHEZ_FLORA</p>
         <p className="text-xs text-center text-muted-foreground mt-1">
-          Utilisez admin@admin.com avec n'importe quel mot de passe pour accéder à l'interface d'administration.
+          Prenez plaisir a vous connecter à CHEZFLORA
         </p>
       </div>
     </AuthLayout>

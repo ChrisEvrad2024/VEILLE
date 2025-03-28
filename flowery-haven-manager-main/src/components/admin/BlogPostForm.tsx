@@ -110,7 +110,7 @@ export function BlogPostForm({ post, onSubmit, onCancel }: BlogPostFormProps) {
   };
 
   // Add tag to the list
-  const handleAddTag = async () => {
+  const handleAddTag =  () => {
     if (newTag && !tags.includes(newTag)) {
       setTags([...tags, newTag]);
       setNewTag("");

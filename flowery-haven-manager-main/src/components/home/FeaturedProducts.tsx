@@ -5,7 +5,7 @@ import { getPopularProducts } from '@/lib/data';
 import ProductCard from '@/components/shared/ProductCard';
 import { ChevronRight } from 'lucide-react';
 
-const FeaturedProducts = async () => {
+const FeaturedProducts =  () => {
   const popularProducts = getPopularProducts();
   
   return (

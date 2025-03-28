@@ -38,7 +38,7 @@ import {
 } from "@/lib/blog";
 import { BlogPost } from "@/types/blog";
 
-const BlogPage = async () => {
+const BlogPage =  () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const postId = searchParams.get("id");
@@ -98,7 +98,7 @@ const BlogPage = async () => {
   }, [tagParam]);
 
   // Handle back to posts list
-  const handleBackToPosts = async () => {
+  const handleBackToPosts =  () => {
     setSelectedPost(null);
     setActiveTag("");
     setSearchParams({});
@@ -112,7 +112,7 @@ const BlogPage = async () => {
   };
   
   // Handle clearing tag filter
-  const handleClearTagFilter = async () => {
+  const handleClearTagFilter =  () => {
     setActiveTag("");
     setSearchParams({});
   };

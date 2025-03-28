@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { z } from "zod";
@@ -18,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { Eye, EyeOff } from "lucide-react";
+import { authAdapter } from "@/services/adapters";
 
 // Define form schema
 const formSchema = z.object({
@@ -32,7 +32,8 @@ const formSchema = z.object({
   }),
 });
 
-const Register = async () => {
+// IMPORTANT: Removed 'async' from the component definition
+const Register = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
@@ -54,36 +55,30 @@ const Register = async () => {
     setIsLoading(true);
     
     try {
-      // Simulate API call
-      console.log("Registration data:", data);
+      // Use auth adapter to register
+      await authAdapter.register({
+        email: data.email,
+        password: data.password,
+        firstName: data.firstName,
+        lastName: data.lastName
+      });
       
-      // For demo purposes, we'll just simulate a successful registration
-      setTimeout(() => {
-        // In a real app, you would handle registration here
-        localStorage.setItem("isAuthenticated", "true");
-        localStorage.setItem("user", JSON.stringify({ 
-          email: data.email,
-          firstName: data.firstName,
-          lastName: data.lastName
-        }));
-        
-        toast.success("Compte créé avec succès", {
-          description: "Bienvenue sur Floralie ! Votre compte a été créé.",
-        });
-        
-        navigate("/");
-      }, 1000);
+      toast.success("Compte créé avec succès", {
+        description: "Bienvenue sur Floralie ! Votre compte a été créé.",
+      });
+      
+      navigate("/");
     } catch (error) {
       console.error("Registration error:", error);
       toast.error("Échec de la création du compte", {
-        description: "Une erreur s'est produite. Veuillez réessayer.",
+        description: error instanceof Error ? error.message : "Une erreur s'est produite. Veuillez réessayer.",
       });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const togglePasswordVisibility = async () => setShowPassword(!showPassword);
+  const togglePasswordVisibility = () => setShowPassword(!showPassword);
 
   return (
     <AuthLayout

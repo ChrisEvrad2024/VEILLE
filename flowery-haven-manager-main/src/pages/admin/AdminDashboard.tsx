@@ -36,7 +36,7 @@ import {
   AdminNotifications 
 } from "@/components/admin/AdminDashboardAlerts";
 
-const AdminDashboard = async () => {
+const AdminDashboard =  () => {
   const [totalProducts, setTotalProducts] = useState(0);
   const [totalOrders, setTotalOrders] = useState(0);
   const [totalCustomers, setTotalCustomers] = useState(0);

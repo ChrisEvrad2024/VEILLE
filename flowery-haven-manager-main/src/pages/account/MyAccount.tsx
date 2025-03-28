@@ -17,7 +17,7 @@ type WishlistItem = {
   image: string;
 };
 
-const MyAccount = async () => {
+const MyAccount =  () => {
   const [userData, setUserData] = useState<any>(null);
   const [wishlistCount, setWishlistCount] = useState(0);
   const [cartCount, setCartCount] = useState(0);
@@ -49,7 +49,7 @@ const MyAccount = async () => {
     setCartCount(getCartItemCount());
     
     // Update counts when localStorage changes
-    const handleStorageChange = async () => {
+    const handleStorageChange =  () => {
       setWishlistCount(getWishlistItems().length);
       setCartCount(getCartItemCount());
     };

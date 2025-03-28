@@ -26,7 +26,7 @@ const formSchema = z.object({
   message: z.string().min(10, "Le message doit contenir au moins 10 caractères"),
 });
 
-const ContactPage = async () => {
+const ContactPage =  () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({

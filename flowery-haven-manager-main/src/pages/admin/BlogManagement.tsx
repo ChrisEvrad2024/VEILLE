@@ -58,7 +58,7 @@ interface FormPostData {
   tags: string[];
 }
 
-const BlogManagement = async () => {
+const BlogManagement =  () => {
   const [posts, setPosts] = useState<BlogPost[]>(getAllBlogPosts());
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPost, setSelectedPost] = useState<BlogPost | null>(null);
@@ -109,7 +109,7 @@ const BlogManagement = async () => {
   };
   
   // Handle adding new post
-  const handleAddPost = async () => {
+  const handleAddPost =  () => {
     setEditingPost(null);
     setIsFormDialogOpen(true);
   };

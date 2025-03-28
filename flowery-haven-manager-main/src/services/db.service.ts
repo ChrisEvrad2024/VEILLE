@@ -2,6 +2,7 @@
 const DB_NAME = "chezFlora";
 const DB_VERSION = 1;
 
+
 // Initialiser la base de données et créer les object stores
 const initDatabase = (): Promise<IDBDatabase> => {
     return new Promise((resolve, reject) => {

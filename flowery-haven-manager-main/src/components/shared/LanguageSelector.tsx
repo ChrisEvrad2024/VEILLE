@@ -10,7 +10,7 @@ import {
 import { availableLanguages, getDefaultLanguage, setLanguage } from '@/lib/language';
 import { Globe } from 'lucide-react';
 
-const LanguageSelector = async () => {
+const LanguageSelector =  () => {
   const [currentLanguage, setCurrentLanguage] = useState(getDefaultLanguage());
   
   useEffect(() => {

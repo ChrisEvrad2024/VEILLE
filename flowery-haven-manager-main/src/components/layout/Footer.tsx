@@ -2,7 +2,7 @@
 import { Link } from 'react-router-dom';
 import { Instagram, Facebook, Twitter } from 'lucide-react';
 
-const Footer = async () => {
+const Footer =  () => {
   const currentYear = new Date().getFullYear();
 
   return (

@@ -8,7 +8,7 @@ export function useCart() {
     const [cartTotal, setCartTotal] = useState(0);
     const [loading, setLoading] = useState(true);
 
-    const fetchCart = async () => {
+    const fetchCart =  () => {
         try {
             setLoading(true);
             const cartItems = await cartService.getCart();
@@ -49,7 +49,7 @@ export function useCart() {
         await fetchCart();
     };
 
-    const clearCart = async () => {
+    const clearCart =  () => {
         await cartService.clearCart();
         await fetchCart();
     };

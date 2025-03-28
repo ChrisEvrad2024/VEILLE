@@ -22,7 +22,7 @@ const COLORS = [
   { name: 'Bleu', value: '#3B82F6' },
 ];
 
-const ProductDetail = async () => {
+const ProductDetail =  () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const product = id ? getProductById(id) : undefined;
@@ -80,13 +80,13 @@ const ProductDetail = async () => {
     );
   }
   
-  const decreaseQuantity = async () => {
+  const decreaseQuantity =  () => {
     if (quantity > 1) {
       setQuantity(quantity - 1);
     }
   };
   
-  const increaseQuantity = async () => {
+  const increaseQuantity =  () => {
     // Limit quantity to stock level if stock is defined
     if (product.stock !== undefined && quantity < product.stock) {
       setQuantity(quantity + 1);
@@ -100,7 +100,7 @@ const ProductDetail = async () => {
     }
   };
   
-  const addProductToCart = async () => {
+  const addProductToCart =  () => {
     if (product && isInStock) {
       addToCart(product, quantity);
       toast.success("Ajouté au panier", {
@@ -118,7 +118,7 @@ const ProductDetail = async () => {
     }
   };
   
-  const toggleWishlist = async () => {
+  const toggleWishlist =  () => {
     if (inWishlist) {
       removeFromWishlist(product.id);
       setInWishlist(false);
@@ -141,7 +141,7 @@ const ProductDetail = async () => {
     }
   };
   
-  const shareProduct = async () => {
+  const shareProduct =  () => {
     navigator.clipboard.writeText(window.location.href);
     setIsLinkCopied(true);
     toast.success("Lien copié !", {

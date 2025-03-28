@@ -10,7 +10,7 @@ const heroImages = [
   'https://images.unsplash.com/photo-1508610048659-a06b669e3321?q=80&w=2070'
 ];
 
-const Hero = async () => {
+const Hero =  () => {
   const [currentSlide, setCurrentSlide] = useState(0);
 
   useEffect(() => {

@@ -1,146 +1,173 @@
-
 import { useEffect, useState } from "react";
 import { Outlet, Link, useNavigate, useLocation } from "react-router-dom";
-import { 
-  LayoutDashboard, 
-  PackageOpen, 
-  Users, 
-  ShoppingBag, 
-  Settings, 
-  FileText, 
-  BarChart3,
-  LogOut,
-  Menu,
-  AlertCircle
-} from "lucide-react";
+import { LayoutDashboard, Package, ShoppingCart, Users, FileText, BarChart3, Settings, LogOut } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { toast } from "sonner";
+import { authService } from "@/services/auth.service";
 
-const AdminLayout = async () => {
-  const navigate = useNavigate();
+// Admin navigation items
+const navItems = [
+  {
+    title: "Dashboard",
+    href: "/admin",
+    icon: <LayoutDashboard size={18} />,
+  },
+  {
+    title: "Produits",
+    href: "/admin/products",
+    icon: <Package size={18} />,
+  },
+  {
+    title: "Blog",
+    href: "/admin/blog",
+    icon: <FileText size={18} />,
+  },
+  {
+    title: "Clients",
+    href: "/admin/customers",
+    icon: <Users size={18} />,
+  },
+  {
+    title: "Commandes",
+    href: "/admin/orders",
+    icon: <ShoppingCart size={18} />,
+  },
+  {
+    title: "Statistiques",
+    href: "/admin/analytics",
+    icon: <BarChart3 size={18} />,
+  },
+  {
+    title: "Paramètres",
+    href: "/admin/settings",
+    icon: <Settings size={18} />,
+  },
+];
+
+const AdminLayout = () => {
   const location = useLocation();
-  const [isAdmin, setIsAdmin] = useState(true); // Always set to true to bypass auth check
-  const [isLoading, setIsLoading] = useState(false); // Set to false to skip loading state
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-  // Authentication check is now disabled
+  const navigate = useNavigate();
+  const [userData, setUserData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  
   useEffect(() => {
-    console.log("Admin authentication check bypassed");
-    // No authentication check - always considered authenticated
-  }, []);
-
+    // Check if user is authenticated AND is admin
+    if (!authService.isAuthenticated()) {
+      navigate("/auth/login");
+      toast.error("Veuillez vous connecter pour accéder à l'administration");
+      return;
+    }
+    
+    if (!authService.isAdmin()) {
+      navigate("/");
+      toast.error("Vous n'avez pas les permissions nécessaires pour accéder à cette page");
+      return;
+    }
+    
+    // Get current user data
+    const currentUser = authService.getCurrentUser();
+    if (currentUser) {
+      setUserData(currentUser);
+    }
+    
+    setIsLoading(false);
+  }, [navigate]);
+  
   // Logout handler
-  const handleLogout = async () => {
+  const handleLogout = () => {
+    authService.logout();
     toast.success("Déconnexion réussie");
     navigate("/");
   };
-
-  // Navigation items for the sidebar
-  const navigationItems = [
-    { 
-      label: "Tableau de bord", 
-      href: "/admin", 
-      icon: <LayoutDashboard size={18} /> 
-    },
-    { 
-      label: "Produits", 
-      href: "/admin/products", 
-      icon: <PackageOpen size={18} /> 
-    },
-    { 
-      label: "Commandes", 
-      href: "/admin/orders", 
-      icon: <ShoppingBag size={18} /> 
-    },
-    { 
-      label: "Clients", 
-      href: "/admin/customers", 
-      icon: <Users size={18} /> 
-    },
-    { 
-      label: "Blog", 
-      href: "/admin/blog", 
-      icon: <FileText size={18} /> 
-    },
-    { 
-      label: "Statistiques", 
-      href: "/admin/analytics", 
-      icon: <BarChart3 size={18} /> 
-    },
-    { 
-      label: "Paramètres", 
-      href: "/admin/settings", 
-      icon: <Settings size={18} /> 
-    },
-  ];
-
-  const Sidebar = async () => (
-    <div className="space-y-1">
-      <div className="px-3 py-4">
-        <h2 className="text-lg font-semibold mb-1">Admin Floralie</h2>
-        <p className="text-sm text-muted-foreground">Gérez votre boutique</p>
+  
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-pulse">Chargement...</div>
       </div>
-      
-      <Separator />
-      
-      <nav className="space-y-1 px-3 py-2">
-        {navigationItems.map((item) => (
-          <Link 
-            key={item.href} 
-            to={item.href}
-            className={`flex items-center gap-3 px-3 py-2 rounded-md hover:bg-muted w-full transition-colors ${
-              location.pathname === item.href ? "bg-muted font-medium" : ""
-            }`}
-            onClick={() => setIsMobileMenuOpen(false)}
-          >
-            {item.icon}
-            <span>{item.label}</span>
-          </Link>
-        ))}
-        <Separator className="my-2" />
-        <Button 
-          variant="ghost" 
-          className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-destructive/10 w-full transition-colors text-destructive justify-start font-normal"
-          onClick={handleLogout}
-        >
-          <LogOut size={18} />
-          <span>Déconnexion</span>
-        </Button>
-      </nav>
-    </div>
-  );
+    );
+  }
 
   return (
     <div className="min-h-screen flex">
-      {/* Desktop Sidebar */}
-      <aside className="hidden md:block w-64 border-r h-screen overflow-y-auto sticky top-0">
-        <Sidebar />
-      </aside>
+      {/* Sidebar */}
+      <div className="fixed inset-y-0 z-50 flex w-64 flex-col bg-background border-r">
+        <div className="px-3 py-4 flex flex-col h-full">
+          {/* Logo & Admin title */}
+          <div className="px-3 py-2">
+            <Link to="/admin" className="flex items-center">
+              <span className="font-serif text-xl">ChezFlora</span>
+              <span className="ml-2 rounded bg-primary px-1.5 py-0.5 text-[0.6rem] font-medium text-primary-foreground">
+                ADMIN
+              </span>
+            </Link>
+          </div>
+          
+          <div className="mt-8 flex-1">
+            <nav className="flex flex-col gap-1">
+              {navItems.map((item) => (
+                <Link
+                  key={item.href}
+                  to={item.href}
+                  className={cn(
+                    "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted",
+                    location.pathname === item.href && "bg-muted font-medium"
+                  )}
+                >
+                  {item.icon}
+                  {item.title}
+                </Link>
+              ))}
+            </nav>
+          </div>
+          
+          {/* User info and logout */}
+          <div className="mt-auto">
+            <Separator className="my-4" />
+            <div className="flex flex-col gap-4 px-3 py-2">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                  {userData?.firstName?.charAt(0) || 'A'}
+                </div>
+                <div>
+                  <p className="text-sm font-medium">{userData?.firstName || 'Admin'} {userData?.lastName || ''}</p>
+                  <p className="text-xs text-muted-foreground">{userData?.email || 'admin@admin.com'}</p>
+                </div>
+              </div>
+              <div>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="w-full justify-start text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  onClick={handleLogout}
+                >
+                  <LogOut size={16} className="mr-2" />
+                  Déconnexion
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="w-full justify-start mt-1"
+                  asChild
+                >
+                  <Link to="/">
+                    <Package size={16} className="mr-2" />
+                    Voir la boutique
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
       
-      {/* Mobile sidebar (sheet) */}
-      <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-        <SheetContent side="left" className="p-0">
-          <Sidebar />
-        </SheetContent>
-      </Sheet>
-      
-      {/* Main Content */}
-      <div className="flex-1">
-        {/* Mobile Header */}
-        <header className="md:hidden sticky top-0 z-10 bg-background border-b flex items-center justify-between p-4">
-          <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(true)}>
-            <Menu size={20} />
-          </Button>
-          <h1 className="font-semibold">Admin Floralie</h1>
-          <div className="w-10"></div> {/* For balance */}
-        </header>
-        
-        {/* Content */}
-        <main className="p-6">
+      {/* Main content */}
+      <div className="pl-64 w-full">
+        <div className="container max-w-7xl mx-auto p-8">
           <Outlet />
-        </main>
+        </div>
       </div>
     </div>
   );

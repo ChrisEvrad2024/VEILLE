@@ -7,12 +7,12 @@ import { getCart, updateCartItemQuantity, removeFromCart, getCartTotal } from '@
 import { Minus, Plus, X, ShoppingBag } from 'lucide-react';
 import { toast } from "sonner";
 
-const Cart = async () => {
+const Cart =  () => {
   const [cartItems, setCartItems] = useState<any[]>([]);
   const [totalAmount, setTotalAmount] = useState(0);
   
   useEffect(() => {
-    const loadCart = async () => {
+    const loadCart =  () => {
       const items = getCart();
       setCartItems(items);
       setTotalAmount(getCartTotal());
@@ -37,7 +37,7 @@ const Cart = async () => {
     });
   };
   
-  const proceedToCheckout = async () => {
+  const proceedToCheckout =  () => {
     // This would normally navigate to a checkout page
     toast.success("Simulation de commande", {
       description: "Dans une version complète, cette action vous dirigerait vers le processus de paiement.",
