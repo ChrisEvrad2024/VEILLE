@@ -17,6 +17,7 @@ import { cmsService } from './cms.service';
 import { analyticsService } from './analytics.service';
 import { ratingService } from './rating.service';
 import { userManagementService } from './user-management.service';
+import { loginHistoryService } from './login-history.service';
 
 import {
     cartAdapter,
@@ -30,7 +31,8 @@ import {
     dashboardAdapter,
     cmsAdapter,
     ratingAdapter,
-    userAdapter
+    userAdapter,
+    addressAdapter
 } from './adapters';
 
 // Initialiser la base de données au démarrage
@@ -50,7 +52,6 @@ const initialize = async () => {
     }
 };
 
-// Exporter tous les services
 export {
     // Services de base de données
     dbService,
@@ -58,6 +59,7 @@ export {
     // Services utilisateur et authentification
     authService,
     userManagementService,
+    loginHistoryService,
     
     // Services liés aux produits et catalogue
     productService,
@@ -99,6 +101,7 @@ export {
     cmsAdapter,
     ratingAdapter,
     userAdapter,
+    addressAdapter,
     
     // Initialisation
     initialize

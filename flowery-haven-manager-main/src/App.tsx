@@ -36,6 +36,7 @@ import OrderHistory from "./pages/account/OrderHistory";
 import Addresses from "./pages/account/Addresses";
 import AdminLayout from "./components/layout/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
+import LoginHistory from "./pages/account/LoginHistory";
 
 const queryClient = new QueryClient();
 
@@ -78,6 +79,7 @@ const App = () => {
               <Route index element={<MyAccount />} />
               <Route path="profile" element={<ProfileSettings />} />
               <Route path="orders" element={<OrderHistory />} />
+              <Route path="login-history" element={<LoginHistory />} />
               <Route path="addresses" element={<Addresses />} />
             </Route>
           </Route>

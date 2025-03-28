@@ -8,6 +8,9 @@ import Footer from "./Footer";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
+import { Shield } from "lucide-react";
+
+
 const AccountLayout =  () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -56,7 +59,8 @@ const AccountLayout =  () => {
     { label: "Mon compte", href: "/account", icon: <User size={18} /> },
     { label: "Mes informations", href: "/account/profile", icon: <Settings size={18} /> },
     { label: "Mes commandes", href: "/account/orders", icon: <ShoppingBag size={18} /> },
-    { label: "Mes adresses", href: "/account/addresses", icon: <MapPin size={18} /> }
+    { label: "Mes adresses", href: "/account/addresses", icon: <MapPin size={18} /> },
+    { label: "Historique de connexion", href: "/account/login-history", icon: <Shield size={18} /> }
   ];
 
   return (

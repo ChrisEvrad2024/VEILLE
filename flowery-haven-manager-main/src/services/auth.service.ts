@@ -1,5 +1,6 @@
 // src/services/auth.service.ts (enhanced)
 import { dbService } from './db.service';
+import { loginHistoryService } from './login-history.service';
 
 // Types d'utilisateurs
 export interface User {
@@ -63,6 +64,7 @@ const register = async (userData: Omit<User, 'id' | 'role' | 'createdAt'>): Prom
 };
 
 // Connexion utilisateur
+// Connexion utilisateur
 const login = async (email: string, password: string): Promise<Omit<User, 'password'>> => {
     try {
         // Simulation de login admin pour faciliter les tests
@@ -78,6 +80,11 @@ const login = async (email: string, password: string): Promise<Omit<User, 'passw
 
             localStorage.setItem("isAuthenticated", "true");
             localStorage.setItem("user", JSON.stringify(adminUser));
+            
+            // Enregistrer cette connexion réussie dans l'historique
+            if (typeof loginHistoryService !== 'undefined') {
+                await loginHistoryService.recordSuccessfulLogin();
+            }
 
             return adminUser;
         }
@@ -86,6 +93,15 @@ const login = async (email: string, password: string): Promise<Omit<User, 'passw
         const users = await dbService.getByIndex<User>("users", "email", email);
 
         if (!users || users.length === 0 || users[0].password !== password) {
+            // Enregistrer cette tentative de connexion échouée
+            if (typeof loginHistoryService !== 'undefined') {
+                await loginHistoryService.recordFailedLogin(
+                    email, 
+                    !users || users.length === 0 
+                        ? "Email inconnu" 
+                        : "Mot de passe incorrect"
+                );
+            }
             throw new Error("Email ou mot de passe incorrect");
         }
 
@@ -110,6 +126,11 @@ const login = async (email: string, password: string): Promise<Omit<User, 'passw
         // Stocker dans localStorage pour la session
         localStorage.setItem("isAuthenticated", "true");
         localStorage.setItem("user", JSON.stringify(sessionUser));
+        
+        // Enregistrer cette connexion réussie dans l'historique
+        if (typeof loginHistoryService !== 'undefined') {
+            await loginHistoryService.recordSuccessfulLogin();
+        }
 
         return sessionUser;
     } catch (error) {
