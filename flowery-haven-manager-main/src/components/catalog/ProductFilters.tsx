@@ -159,12 +159,12 @@ const ProductFilters = ({
             <div className="w-full">
               <Label htmlFor="min-price" className="text-sm font-medium mb-1 block">Min</Label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">XAF</span>
+                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground"></span>
                 <Input
                   id="min-price"
                   className="pl-7"
                   type="number"
-                  min={0}
+                  min={100}
                   max={priceValues[1]}
                   value={minPrice}
                   onChange={(e) => handleMinPriceChange(e.target.value)}
@@ -174,7 +174,7 @@ const ProductFilters = ({
             <div className="w-full">
               <Label htmlFor="max-price" className="text-sm font-medium mb-1 block">Max</Label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">XAF</span>
+                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground"></span>
                 <Input
                   id="max-price"
                   className="pl-7"

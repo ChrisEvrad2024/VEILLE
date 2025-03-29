@@ -3,7 +3,6 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import AuthLayout from "@/components/layout/AuthLayout";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -24,7 +23,45 @@ const formSchema = z.object({
   password: z.string().min(1, "Le mot de passe est requis"),
 });
 
-// IMPORTANT: Removed 'async' from the component definition
+// Custom AuthLayout with logo
+const AuthLayoutWithLogo = ({ title, description, children }) => {
+  return (
+    <div className="flex min-h-screen">
+      {/* Logo Side */}
+      <div className="hidden md:flex md:w-1/2 bg-gray-50 items-center justify-center p-8">
+        <div className="max-w-md">
+          <img 
+            src="/src/assets/logo_nobg.png" 
+            alt="CHEZFLORA" 
+            className="w-full max-w-xs mx-auto"
+          />
+        </div>
+      </div>
+      
+      {/* Form Side */}
+      <div className="w-full md:w-1/2 flex items-center justify-center p-8">
+        <div className="w-full max-w-md space-y-6">
+          <div className="text-center mb-8">
+            <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
+            <p className="text-sm text-muted-foreground mt-2">{description}</p>
+          </div>
+          
+          {/* On mobile only, show a smaller logo */}
+          <div className="md:hidden flex justify-center mb-8">
+            <img 
+              src="/src/assets/logo_nobg.png" 
+              alt="CHEZFLORA" 
+              className="w-40"
+            />
+          </div>
+          
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -73,7 +110,7 @@ const Login = () => {
   const togglePasswordVisibility = () => setShowPassword(!showPassword);
 
   return (
-    <AuthLayout
+    <AuthLayoutWithLogo
       title="Connexion"
       description="Connectez-vous à votre compte pour accéder à vos commandes et favoris."
     >
@@ -161,7 +198,7 @@ const Login = () => {
           Prenez plaisir a vous connecter à CHEZFLORA
         </p>
       </div>
-    </AuthLayout>
+    </AuthLayoutWithLogo>
   );
 };
 

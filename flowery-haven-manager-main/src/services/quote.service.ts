@@ -1,411 +1,525 @@
 // src/services/quote.service.ts
+import { v4 as uuidv4 } from 'uuid';
 import { dbService } from './db.service';
 import { authService } from './auth.service';
+import { QuoteRequest, QuoteStatus, Quote, QuoteItem } from '@/types/quote';
+import { orderService } from './order.service';
+import { Order, OrderAddress } from '@/types/order';
 
-// Types pour les devis
-export interface QuoteFile {
-    id: string;
-    name: string;
-    type: string;
-    size: number;
-    url: string;
-}
-
-export interface QuoteRequest {
-    id: string;
-    userId: string;
-    userName: string;
-    userEmail: string;
-    description: string;
-    requestDate: Date;
-    status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
-    files?: QuoteFile[];
-    urgency: 'low' | 'medium' | 'high';
-    expectedDeliveryDate?: Date;
-    specialRequirements?: string;
-}
-
-export interface QuoteProposal {
-    id: string;
-    quoteRequestId: string;
-    creationDate: Date;
-    validUntil: Date;
-    totalAmount: number;
-    items: Array<{
-        description: string;
-        quantity: number;
-        unitPrice: number;
-        totalPrice: number;
-    }>;
-    adminNotes?: string;
-    status: 'draft' | 'sent' | 'accepted' | 'rejected' | 'expired';
-    customerComment?: string;
-    acceptanceDate?: Date;
-    rejectionDate?: Date;
-    rejectionReason?: string;
-}
-
-// Créer une demande de devis
-const createQuoteRequest = async (
-    description: string,
-    files: QuoteFile[] = [],
-    urgency: QuoteRequest['urgency'] = 'medium',
-    expectedDeliveryDate?: Date,
-    specialRequirements?: string
-): Promise<QuoteRequest> => {
-    try {
-        const currentUser = authService.getCurrentUser();
-
-        if (!currentUser) {
-            throw new Error("Utilisateur non authentifié");
+class QuoteService {
+    // Méthodes de récupération
+    async getQuoteRequestById(id: string): Promise<QuoteRequest | null> {
+        try {
+            const quoteRequest = await dbService.get<QuoteRequest>('quotes', id);
+            return quoteRequest || null;
+        } catch (error) {
+            console.error('Error getting quote request:', error);
+            return null;
         }
-
-        // Créer la demande de devis
-        const newQuoteRequest: QuoteRequest = {
-            id: `quote_req_${Date.now()}`,
-            userId: currentUser.id,
-            userName: `${currentUser.firstName} ${currentUser.lastName}`,
-            userEmail: currentUser.email,
-            description,
-            requestDate: new Date(),
-            status: 'pending',
-            files,
-            urgency,
-            expectedDeliveryDate,
-            specialRequirements
-        };
-
-        // Enregistrer la demande
-        await dbService.addItem("quoteRequests", newQuoteRequest);
-
-        return newQuoteRequest;
-    } catch (error) {
-        console.error("Error in createQuoteRequest:", error);
-        throw error;
     }
-};
 
-// Obtenir les demandes de devis de l'utilisateur
-const getUserQuoteRequests = async (): Promise<QuoteRequest[]> => {
-    try {
-        const currentUser = authService.getCurrentUser();
+    async getQuoteById(id: string): Promise<Quote | null> {
+        try {
+            const quote = await dbService.get<Quote>('quotes', id);
+            return quote || null;
+        } catch (error) {
+            console.error('Error getting quote:', error);
+            return null;
+        }
+    }
 
-        if (!currentUser) {
+    async getQuoteRequestsByUser(userId: string): Promise<QuoteRequest[]> {
+        try {
+            const quotes = await dbService.getByUserId<QuoteRequest>('quotes', userId);
+            return quotes.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        } catch (error) {
+            console.error('Error getting user quote requests:', error);
             return [];
         }
-
-        // Récupérer les demandes de devis de l'utilisateur
-        return await dbService.getByIndex<QuoteRequest>("quoteRequests", "userId", currentUser.id);
-    } catch (error) {
-        console.error("Error in getUserQuoteRequests:", error);
-        return [];
     }
-};
 
-// Obtenir une demande de devis par son ID
-const getQuoteRequestById = async (requestId: string): Promise<QuoteRequest | null> => {
-    try {
-        const request = await dbService.getItemById<QuoteRequest>("quoteRequests", requestId);
-
-        if (!request) {
-            return null;
+    async getQuoteRequestsByStatus(status: QuoteStatus): Promise<QuoteRequest[]> {
+        try {
+            const quotes = await dbService.getByStatus<QuoteRequest>('quotes', status);
+            return quotes.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        } catch (error) {
+            console.error('Error getting quote requests by status:', error);
+            return [];
         }
-
-        // Vérifier que l'utilisateur est autorisé
-        const currentUser = authService.getCurrentUser();
-
-        if (!currentUser || (request.userId !== currentUser.id && !authService.isAdmin())) {
-            return null;
-        }
-
-        return request;
-    } catch (error) {
-        console.error(`Error in getQuoteRequestById for request ${requestId}:`, error);
-        return null;
     }
-};
 
-// Annuler une demande de devis
-const cancelQuoteRequest = async (requestId: string): Promise<boolean> => {
-    try {
-        const request = await getQuoteRequestById(requestId);
-
-        if (!request) {
-            return false;
+    async getAllQuoteRequests(): Promise<QuoteRequest[]> {
+        try {
+            const quotes = await dbService.getAll<QuoteRequest>('quotes');
+            return quotes.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        } catch (error) {
+            console.error('Error getting all quote requests:', error);
+            return [];
         }
+    }
 
-        // Vérifier que le statut permet l'annulation
-        if (request.status !== 'pending' && request.status !== 'in_progress') {
-            throw new Error("Cette demande ne peut plus être annulée");
+    // Création de demande de devis
+    async createQuoteRequest(
+        eventType: string,
+        eventDate: string,
+        budget: number,
+        description: string,
+        attachments?: string[]
+    ): Promise<{ success: boolean; quoteId?: string; message: string }> {
+        try {
+            // Vérifier l'authentification
+            const currentUser = authService.getCurrentUser();
+            if (!currentUser) {
+                return { success: false, message: 'Vous devez être connecté pour demander un devis.' };
+            }
+
+            // Créer la demande de devis
+            const quoteId = uuidv4();
+            const now = new Date().toISOString();
+            // Date d'expiration à 30 jours
+            const expiryDate = new Date();
+            expiryDate.setDate(expiryDate.getDate() + 30);
+
+            const quoteRequest: QuoteRequest = {
+                id: quoteId,
+                userId: currentUser.id,
+                userName: `${currentUser.firstName} ${currentUser.lastName}`,
+                userEmail: currentUser.email,
+                userPhone: currentUser.phone || '',
+                eventType,
+                eventDate,
+                budget,
+                description,
+                attachments,
+                status: 'pending',
+                createdAt: now,
+                updatedAt: now,
+                expiresAt: expiryDate.toISOString()
+            };
+
+            // Enregistrer la demande dans la base de données
+            await dbService.addItem('quotes', quoteRequest);
+
+            return {
+                success: true,
+                quoteId,
+                message: 'Votre demande de devis a été soumise avec succès. Nous vous contacterons prochainement.'
+            };
+        } catch (error) {
+            console.error('Error creating quote request:', error);
+            return {
+                success: false,
+                message: 'Une erreur est survenue lors de la soumission de votre demande de devis. Veuillez réessayer.'
+            };
         }
+    }
 
-        // Mettre à jour le statut
-        const updatedRequest = {
-            ...request,
-            status: 'cancelled' as const
+    // Mise à jour du statut de demande de devis
+    async updateQuoteRequestStatus(
+        id: string,
+        newStatus: QuoteStatus,
+        note?: string
+    ): Promise<{ success: boolean; message: string }> {
+        try {
+            const quoteRequest = await this.getQuoteRequestById(id);
+            if (!quoteRequest) {
+                return { success: false, message: 'Demande de devis introuvable.' };
+            }
+
+            // Mettre à jour la demande
+            const updatedQuoteRequest: QuoteRequest = {
+                ...quoteRequest,
+                status: newStatus,
+                updatedAt: new Date().toISOString()
+            };
+
+            await dbService.updateItem('quotes', updatedQuoteRequest);
+
+            return { success: true, message: 'Statut de la demande de devis mis à jour avec succès.' };
+        } catch (error) {
+            console.error('Error updating quote request status:', error);
+            return { success: false, message: 'Une erreur est survenue lors de la mise à jour du statut.' };
+        }
+    }
+
+    // Création d'un devis en réponse à une demande
+    async createQuote(
+        requestId: string,
+        items: { name: string; description: string; quantity: number; unitPrice: number }[],
+        notes?: string,
+        adminNotes?: string,
+        validityDays: number = 30
+    ): Promise<{ success: boolean; quoteId?: string; message: string }> {
+        try {
+            const quoteRequest = await this.getQuoteRequestById(requestId);
+            if (!quoteRequest) {
+                return { success: false, message: 'Demande de devis introuvable.' };
+            }
+
+            // Calculer les totaux
+            const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+            const tax = subtotal * 0.2; // TVA à 20%
+            const total = subtotal + tax;
+
+            // Créer le devis
+            const quoteId = uuidv4();
+            const now = new Date().toISOString();
+
+            // Date de validité
+            const validUntil = new Date();
+            validUntil.setDate(validUntil.getDate() + validityDays);
+
+            // Créer les éléments du devis
+            const quoteItems: QuoteItem[] = items.map(item => ({
+                id: uuidv4(),
+                quoteId,
+                name: item.name,
+                description: item.description,
+                quantity: item.quantity,
+                unitPrice: item.unitPrice,
+                total: item.quantity * item.unitPrice
+            }));
+
+            const quote: Quote = {
+                id: quoteId,
+                requestId,
+                userId: quoteRequest.userId,
+                items: quoteItems,
+                subtotal,
+                tax,
+                discount: 0,
+                total,
+                status: 'awaiting_customer',
+                notes,
+                adminNotes,
+                validUntil: validUntil.toISOString(),
+                createdAt: now,
+                updatedAt: now
+            };
+
+            // Enregistrer le devis dans la base de données
+            await dbService.addItem('quotes', quote);
+
+            // Mettre à jour le statut de la demande
+            await this.updateQuoteRequestStatus(requestId, 'in_review');
+
+            return {
+                success: true,
+                quoteId,
+                message: 'Devis créé avec succès et envoyé au client.'
+            };
+        } catch (error) {
+            console.error('Error creating quote:', error);
+            return {
+                success: false,
+                message: 'Une erreur est survenue lors de la création du devis. Veuillez réessayer.'
+            };
+        }
+    }
+
+    // Actions client sur les devis
+    async acceptQuote(
+        quoteId: string,
+        shippingAddress: OrderAddress
+    ): Promise<{ success: boolean; orderId?: string; message: string }> {
+        try {
+            const quote = await this.getQuoteById(quoteId);
+            if (!quote) {
+                return { success: false, message: 'Devis introuvable.' };
+            }
+
+            if (quote.status !== 'awaiting_customer') {
+                return { success: false, message: 'Ce devis ne peut plus être accepté.' };
+            }
+
+            // Vérifier si le devis est expiré
+            if (new Date(quote.validUntil) < new Date()) {
+                return { success: false, message: 'Ce devis a expiré. Veuillez demander un nouveau devis.' };
+            }
+
+            // Mettre à jour le statut du devis
+            await this.updateQuoteStatus(quoteId, 'accepted');
+
+            // Créer une commande à partir du devis
+            const orderId = uuidv4();
+            const now = new Date().toISOString();
+
+            // Convertir les éléments du devis en éléments de commande
+            const orderItems = quote.items.map(item => ({
+                productId: item.id, // Utiliser l'ID de l'élément du devis comme identifiant de produit (fictif)
+                name: item.name,
+                price: item.unitPrice,
+                quantity: item.quantity,
+                image: '/path/to/default-image.jpg', // Image par défaut pour les éléments de devis
+                orderId,
+                priceAtPurchase: item.unitPrice
+            }));
+
+            // Créer l'objet de commande
+            const order: Order = {
+                id: orderId,
+                userId: quote.userId,
+                items: orderItems,
+                status: 'pending',
+                createdAt: now,
+                updatedAt: now,
+                shippingAddress,
+                billingAddress: shippingAddress,
+                paymentInfo: {
+                    method: 'transfer', // Par défaut, paiement par virement pour les devis
+                    status: 'pending',
+                },
+                subtotal: quote.subtotal,
+                shipping: 0, // Frais de livraison inclus dans le devis
+                discount: quote.discount,
+                tax: quote.tax,
+                total: quote.total,
+                notes: `Commande créée depuis le devis #${quoteId}`
+            };
+
+            // Enregistrer la commande dans la base de données
+            await dbService.addItem('orders', order);
+
+            // Ajouter l'historique du statut de la commande
+            await orderService['addOrderStatusHistory'](
+                orderId,
+                'pending',
+                'Commande créée à partir d\'un devis accepté'
+            );
+
+            return {
+                success: true,
+                orderId,
+                message: 'Devis accepté avec succès. Votre commande a été créée.'
+            };
+        } catch (error) {
+            console.error('Error accepting quote:', error);
+            return {
+                success: false,
+                message: 'Une erreur est survenue lors de l\'acceptation du devis. Veuillez réessayer.'
+            };
+        }
+    }
+
+    async rejectQuote(
+        quoteId: string,
+        reason: string
+    ): Promise<{ success: boolean; message: string }> {
+        try {
+            const quote = await this.getQuoteById(quoteId);
+            if (!quote) {
+                return { success: false, message: 'Devis introuvable.' };
+            }
+
+            if (quote.status !== 'awaiting_customer') {
+                return { success: false, message: 'Ce devis ne peut plus être rejeté.' };
+            }
+
+            // Mettre à jour le statut du devis avec la raison du rejet
+            const updatedQuote: Quote = {
+                ...quote,
+                status: 'rejected',
+                notes: `${quote.notes || ''}\n\nRejeté par le client: ${reason}`.trim(),
+                updatedAt: new Date().toISOString()
+            };
+
+            await dbService.updateItem('quotes', updatedQuote);
+
+            return { success: true, message: 'Devis rejeté avec succès.' };
+        } catch (error) {
+            console.error('Error rejecting quote:', error);
+            return {
+                success: false,
+                message: 'Une erreur est survenue lors du rejet du devis. Veuillez réessayer.'
+            };
+        }
+    }
+
+    // Mise à jour d'un devis existant
+    async updateQuoteStatus(
+        quoteId: string,
+        newStatus: QuoteStatus
+    ): Promise<{ success: boolean; message: string }> {
+        try {
+            const quote = await this.getQuoteById(quoteId);
+            if (!quote) {
+                return { success: false, message: 'Devis introuvable.' };
+            }
+
+            // Mettre à jour le devis
+            const updatedQuote: Quote = {
+                ...quote,
+                status: newStatus,
+                updatedAt: new Date().toISOString()
+            };
+
+            await dbService.updateItem('quotes', updatedQuote);
+
+            return { success: true, message: 'Statut du devis mis à jour avec succès.' };
+        } catch (error) {
+            console.error('Error updating quote status:', error);
+            return { success: false, message: 'Une erreur est survenue lors de la mise à jour du statut.' };
+        }
+    }
+
+    async updateQuote(
+        quoteId: string,
+        updates: {
+            items?: QuoteItem[];
+            notes?: string;
+            adminNotes?: string;
+            validUntil?: string;
+        }
+    ): Promise<{ success: boolean; message: string }> {
+        try {
+            const quote = await this.getQuoteById(quoteId);
+            if (!quote) {
+                return { success: false, message: 'Devis introuvable.' };
+            }
+
+            // Si les éléments sont modifiés, recalculer les totaux
+            let subtotal = quote.subtotal;
+            let tax = quote.tax;
+            let total = quote.total;
+
+            if (updates.items) {
+                subtotal = updates.items.reduce((sum, item) => sum + item.total, 0);
+                tax = subtotal * 0.2; // TVA à 20%
+                total = subtotal + tax;
+            }
+
+            // Mettre à jour le devis
+            const updatedQuote: Quote = {
+                ...quote,
+                items: updates.items || quote.items,
+                notes: updates.notes !== undefined ? updates.notes : quote.notes,
+                adminNotes: updates.adminNotes !== undefined ? updates.adminNotes : quote.adminNotes,
+                validUntil: updates.validUntil || quote.validUntil,
+                subtotal,
+                tax,
+                total,
+                updatedAt: new Date().toISOString()
+            };
+
+            await dbService.updateItem('quotes', updatedQuote);
+
+            return { success: true, message: 'Devis mis à jour avec succès.' };
+        } catch (error) {
+            console.error('Error updating quote:', error);
+            return { success: false, message: 'Une erreur est survenue lors de la mise à jour du devis.' };
+        }
+    }
+
+    // Méthodes utilitaires
+    getQuoteStatusConfig(status: QuoteStatus): {
+        label: string;
+        color: string;
+        icon: string;
+        description: string;
+    } {
+        const statusConfig = {
+            pending: {
+                label: 'En attente',
+                color: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+                icon: 'Clock',
+                description: 'Votre demande de devis est en attente de traitement.'
+            },
+            in_review: {
+                label: 'En cours d\'analyse',
+                color: 'bg-blue-100 text-blue-800 border-blue-200',
+                icon: 'Search',
+                description: 'Nous analysons actuellement votre demande de devis.'
+            },
+            awaiting_customer: {
+                label: 'En attente de réponse',
+                color: 'bg-purple-100 text-purple-800 border-purple-200',
+                icon: 'Mail',
+                description: 'Votre devis est prêt et attend votre réponse.'
+            },
+            accepted: {
+                label: 'Accepté',
+                color: 'bg-green-100 text-green-800 border-green-200',
+                icon: 'CheckCircle',
+                description: 'Vous avez accepté ce devis.'
+            },
+            rejected: {
+                label: 'Refusé',
+                color: 'bg-red-100 text-red-800 border-red-200',
+                icon: 'XCircle',
+                description: 'Vous avez refusé ce devis.'
+            },
+            expired: {
+                label: 'Expiré',
+                color: 'bg-gray-100 text-gray-800 border-gray-200',
+                icon: 'Clock',
+                description: 'Ce devis a expiré et n\'est plus valide.'
+            }
         };
 
-        await dbService.updateItem("quoteRequests", updatedRequest);
-
-        return true;
-    } catch (error) {
-        console.error(`Error in cancelQuoteRequest for request ${requestId}:`, error);
-        return false;
+        return statusConfig[status];
     }
-};
 
-// Mettre à jour le statut d'une demande (admin uniquement)
-const updateQuoteRequestStatus = async (
-    requestId: string,
-    status: QuoteRequest['status']
-): Promise<boolean> => {
-    try {
-        if (!authService.isAdmin()) {
-            throw new Error("Permission refusée");
+    // Méthodes pour les statistiques
+    async getQuoteStatistics(): Promise<{
+        totalQuoteRequests: number;
+        totalQuotes: number;
+        conversionRate: number;
+        quoteRequestsByStatus: Record<QuoteStatus, number>;
+    }> {
+        try {
+            const quoteRequests = await this.getAllQuoteRequests();
+            const quotes = await dbService.getAll<Quote>('quotes');
+
+            const totalQuoteRequests = quoteRequests.length;
+
+            // Filtrer pour ne compter que les devis générés (pas les demandes)
+            const totalQuotes = quotes.filter(q => q.items && q.items.length > 0).length;
+
+            // Calculer le taux de conversion (devis acceptés / devis totaux)
+            const acceptedQuotes = quotes.filter(q => q.status === 'accepted').length;
+            const conversionRate = totalQuotes > 0 ? (acceptedQuotes / totalQuotes) : 0;
+
+            // Compter les demandes par statut
+            const quoteRequestsByStatus = quoteRequests.reduce((acc, q) => {
+                acc[q.status] = (acc[q.status] || 0) + 1;
+                return acc;
+            }, {} as Record<QuoteStatus, number>);
+
+            // S'assurer que tous les statuts sont représentés
+            const allStatuses: QuoteStatus[] = [
+                'pending', 'in_review', 'awaiting_customer', 'accepted', 'rejected', 'expired'
+            ];
+
+            allStatuses.forEach(status => {
+                if (!quoteRequestsByStatus[status]) {
+                    quoteRequestsByStatus[status] = 0;
+                }
+            });
+
+            return {
+                totalQuoteRequests,
+                totalQuotes,
+                conversionRate,
+                quoteRequestsByStatus
+            };
+        } catch (error) {
+            console.error('Error getting quote statistics:', error);
+            return {
+                totalQuoteRequests: 0,
+                totalQuotes: 0,
+                conversionRate: 0,
+                quoteRequestsByStatus: {
+                    pending: 0,
+                    in_review: 0,
+                    awaiting_customer: 0,
+                    accepted: 0,
+                    rejected: 0,
+                    expired: 0
+                }
+            };
         }
-
-        const request = await dbService.getItemById<QuoteRequest>("quoteRequests", requestId);
-
-        if (!request) {
-            return false;
-        }
-
-        // Mettre à jour le statut
-        const updatedRequest = {
-            ...request,
-            status
-        };
-
-        await dbService.updateItem("quoteRequests", updatedRequest);
-
-        return true;
-    } catch (error) {
-        console.error(`Error in updateQuoteRequestStatus for request ${requestId}:`, error);
-        return false;
     }
-};
+}
 
-// Récupérer toutes les demandes de devis (admin uniquement)
-const getAllQuoteRequests = async (): Promise<QuoteRequest[]> => {
-    try {
-        if (!authService.isAdmin()) {
-            throw new Error("Permission refusée");
-        }
-
-        return await dbService.getAllItems<QuoteRequest>("quoteRequests");
-    } catch (error) {
-        console.error("Error in getAllQuoteRequests:", error);
-        return [];
-    }
-};
-
-// Créer une proposition de devis (admin uniquement)
-const createQuoteProposal = async (
-    quoteRequestId: string,
-    items: QuoteProposal['items'],
-    validityPeriodDays: number = 30,
-    adminNotes?: string
-): Promise<QuoteProposal> => {
-    try {
-        if (!authService.isAdmin()) {
-            throw new Error("Permission refusée");
-        }
-
-        const request = await dbService.getItemById<QuoteRequest>("quoteRequests", quoteRequestId);
-
-        if (!request) {
-            throw new Error("Demande de devis non trouvée");
-        }
-
-        // Calculer le montant total
-        const totalAmount = items.reduce((sum, item) => sum + item.totalPrice, 0);
-
-        // Définir la date de validité
-        const validUntil = new Date();
-        validUntil.setDate(validUntil.getDate() + validityPeriodDays);
-
-        // Créer la proposition
-        const newProposal: QuoteProposal = {
-            id: `quote_prop_${Date.now()}`,
-            quoteRequestId,
-            creationDate: new Date(),
-            validUntil,
-            totalAmount,
-            items,
-            adminNotes,
-            status: 'draft'
-        };
-
-        // Enregistrer la proposition
-        await dbService.addItem("quoteProposals", newProposal);
-
-        // Mettre à jour le statut de la demande
-        await updateQuoteRequestStatus(quoteRequestId, 'in_progress');
-
-        return newProposal;
-    } catch (error) {
-        console.error(`Error in createQuoteProposal for request ${quoteRequestId}:`, error);
-        throw error;
-    }
-};
-
-// Envoyer une proposition de devis au client (admin uniquement)
-const sendQuoteProposal = async (proposalId: string): Promise<boolean> => {
-    try {
-        if (!authService.isAdmin()) {
-            throw new Error("Permission refusée");
-        }
-
-        const proposal = await dbService.getItemById<QuoteProposal>("quoteProposals", proposalId);
-
-        if (!proposal) {
-            throw new Error("Proposition de devis non trouvée");
-        }
-
-        if (proposal.status !== 'draft') {
-            throw new Error("Seules les propositions en brouillon peuvent être envoyées");
-        }
-
-        // Mettre à jour le statut
-        const updatedProposal = {
-            ...proposal,
-            status: 'sent' as const
-        };
-
-        await dbService.updateItem("quoteProposals", updatedProposal);
-
-        // Dans une vraie app, on enverrait un email au client ici
-
-        return true;
-    } catch (error) {
-        console.error(`Error in sendQuoteProposal for proposal ${proposalId}:`, error);
-        return false;
-    }
-};
-
-// Obtenir les propositions pour une demande de devis
-const getQuoteProposalsForRequest = async (requestId: string): Promise<QuoteProposal[]> => {
-    try {
-        const request = await getQuoteRequestById(requestId);
-
-        if (!request) {
-            throw new Error("Demande de devis non trouvée ou accès refusé");
-        }
-
-        return await dbService.getByIndex<QuoteProposal>("quoteProposals", "quoteRequestId", requestId);
-    } catch (error) {
-        console.error(`Error in getQuoteProposalsForRequest for request ${requestId}:`, error);
-        return [];
-    }
-};
-
-// Accepter une proposition de devis
-const acceptQuoteProposal = async (proposalId: string, comment?: string): Promise<boolean> => {
-    try {
-        const currentUser = authService.getCurrentUser();
-
-        if (!currentUser) {
-            throw new Error("Utilisateur non authentifié");
-        }
-
-        const proposal = await dbService.getItemById<QuoteProposal>("quoteProposals", proposalId);
-
-        if (!proposal) {
-            throw new Error("Proposition de devis non trouvée");
-        }
-
-        // Vérifier que la proposition est bien destinée à cet utilisateur
-        const request = await dbService.getItemById<QuoteRequest>("quoteRequests", proposal.quoteRequestId);
-
-        if (!request || request.userId !== currentUser.id) {
-            throw new Error("Accès refusé");
-        }
-
-        if (proposal.status !== 'sent') {
-            throw new Error("Cette proposition ne peut pas être acceptée");
-        }
-
-        if (new Date(proposal.validUntil) < new Date()) {
-            throw new Error("Cette proposition a expiré");
-        }
-
-        // Mettre à jour la proposition
-        const updatedProposal = {
-            ...proposal,
-            status: 'accepted' as const,
-            customerComment: comment,
-            acceptanceDate: new Date()
-        };
-
-        await dbService.updateItem("quoteProposals", updatedProposal);
-
-        // Mettre à jour le statut de la demande
-        await updateQuoteRequestStatus(proposal.quoteRequestId, 'completed');
-
-        // Dans une vraie app, on notifierait l'administrateur ici
-
-        return true;
-    } catch (error) {
-        console.error(`Error in acceptQuoteProposal for proposal ${proposalId}:`, error);
-        return false;
-    }
-};
-
-// Refuser une proposition de devis
-const rejectQuoteProposal = async (proposalId: string, reason?: string): Promise<boolean> => {
-    try {
-        const currentUser = authService.getCurrentUser();
-
-        if (!currentUser) {
-            throw new Error("Utilisateur non authentifié");
-        }
-
-        const proposal = await dbService.getItemById<QuoteProposal>("quoteProposals", proposalId);
-
-        if (!proposal) {
-            throw new Error("Proposition de devis non trouvée");
-        }
-
-        // Vérifier que la proposition est bien destinée à cet utilisateur
-        const request = await dbService.getItemById<QuoteRequest>("quoteRequests", proposal.quoteRequestId);
-
-        if (!request || request.userId !== currentUser.id) {
-            throw new Error("Accès refusé");
-        }
-
-        if (proposal.status !== 'sent') {
-            throw new Error("Cette proposition ne peut pas être refusée");
-        }
-
-        // Mettre à jour la proposition
-        const updatedProposal = {
-            ...proposal,
-            status: 'rejected' as const,
-            rejectionReason: reason,
-            rejectionDate: new Date()
-        };
-
-        await dbService.updateItem("quoteProposals", updatedProposal);
-
-        // Dans une vraie app, on notifierait l'administrateur ici
-
-        return true;
-    } catch (error) {
-        console.error(`Error in rejectQuoteProposal for proposal ${proposalId}:`, error);
-        return false;
-    }
-};
-
-export const quoteService = {
-    createQuoteRequest,
-    getUserQuoteRequests,
-    getQuoteRequestById,
-    cancelQuoteRequest,
-    updateQuoteRequestStatus,
-    getAllQuoteRequests,
-    createQuoteProposal,
-    sendQuoteProposal,
-    getQuoteProposalsForRequest,
-    acceptQuoteProposal,
-    rejectQuoteProposal
-};
+export const quoteService = new QuoteService();
+export type { QuoteRequest, QuoteStatus, Quote, QuoteItem };

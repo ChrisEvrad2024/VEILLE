@@ -6,6 +6,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Routes, Route } from "react-router-dom";
 import { initialize } from "@/services";
 
+// Import Providers
+import { ProductProvider } from "@/contexts/ProductContext";
+
 // Import Auth Components
 import RequireAuth from "@/components/auth/RequireAuth";
 import RequireAdmin from "@/components/auth/RequireAdmin";
@@ -42,6 +45,20 @@ import LoginHistory from "./pages/account/LoginHistory";
 import ProductsManagement from "./pages/admin/ProductsManagement";
 import CategoriesManagement from "./pages/admin/CategoriesManagement";
 
+// Import Cart, Order and Quote Management (seulement ceux qui ont été implémentés)
+import Checkout from "./pages/Checkout";
+import OrderConfirmation from "./pages/OrderConfirmation";
+import OrderDetail from "./pages/account/OrderDetail";
+import QuoteRequest from "./pages/QuoteRequest";
+import QuoteHistory from "./pages/account/QuoteHistory";
+import QuoteDetail from "./pages/account/QuoteDetail";
+
+// Import Admin Order Management (seulement ceux qui ont été implémentés)
+import OrdersManagement from "./pages/admin/OrdersManagement";
+import AdminQuoteDetail from "./pages/admin/AdminQuoteDetail";
+import AdminOrderDetail from "./pages/admin/AdminOrderDetail";
+import QuotesManagement from "./pages/admin/QuotesManagement";
+
 const queryClient = new QueryClient();
 
 const App = () => {
@@ -54,54 +71,70 @@ const App = () => {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <Routes>
-          {/* Public routes */}
-          <Route path="/" element={<Index />} />
-          
-          {/* Basic store routes - keep minimal for testing */}
-          <Route path="/catalog" element={<Catalog />} />
-          <Route path="/product/:id" element={<ProductDetail />} />
-          <Route path="/cart" element={<Cart />} />
-          <Route path="/wishlist" element={<Wishlist />} />
-          <Route path="/blog" element={<Blog />} />
-          <Route path="/blog/:id" element={<BlogPost />} />
-          <Route path="/contact" element={<Contact />} />
-          <Route path="/about" element={<About />} />
-          
-          {/* Auth Routes - Our current focus */}
-          <Route path="/auth/login" element={<Login />} />
-          <Route path="/auth/register" element={<Register />} />
-          <Route path="/auth/forgot-password" element={<ForgotPassword />} />
-          <Route path="/auth/reset-password/:token" element={<ResetPassword />} />
-          
-          {/* Protected Account Routes */}
-          <Route element={<RequireAuth />}>
-            <Route path="/account" element={<AccountLayout />}>
-              <Route index element={<MyAccount />} />
-              <Route path="profile" element={<ProfileSettings />} />
-              <Route path="orders" element={<OrderHistory />} />
-              <Route path="login-history" element={<LoginHistory />} />
-              <Route path="addresses" element={<Addresses />} />
+      <ProductProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <Routes>
+            {/* Public routes */}
+            <Route path="/" element={<Index />} />
+            
+            {/* Basic store routes - keep minimal for testing */}
+            <Route path="/catalog" element={<Catalog />} />
+            <Route path="/product/:id" element={<ProductDetail />} />
+            <Route path="/cart" element={<Cart />} />
+            <Route path="/wishlist" element={<Wishlist />} />
+            <Route path="/blog" element={<Blog />} />
+            <Route path="/blog/:id" element={<BlogPost />} />
+            <Route path="/contact" element={<Contact />} />
+            <Route path="/about" element={<About />} />
+            
+            {/* Cart, Checkout and Quote Request Routes */}
+            <Route path="/checkout" element={<Checkout />} />
+            <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />
+            <Route path="/quote-request" element={<QuoteRequest />} />
+            
+            {/* Auth Routes - Our current focus */}
+            <Route path="/auth/login" element={<Login />} />
+            <Route path="/auth/register" element={<Register />} />
+            <Route path="/auth/forgot-password" element={<ForgotPassword />} />
+            <Route path="/auth/reset-password/:token" element={<ResetPassword />} />
+            
+            {/* Protected Account Routes */}
+            <Route element={<RequireAuth />}>
+              <Route path="/account" element={<AccountLayout />}>
+                <Route index element={<MyAccount />} />
+                <Route path="profile" element={<ProfileSettings />} />
+                <Route path="orders" element={<OrderHistory />} />
+                <Route path="orders/:orderId" element={<OrderDetail />} />
+                <Route path="quotes" element={<QuoteHistory />} />
+                <Route path="quotes/:quoteId" element={<QuoteDetail />} />
+                <Route path="login-history" element={<LoginHistory />} />
+                <Route path="addresses" element={<Addresses />} />
+              </Route>
             </Route>
-          </Route>
-          
-          {/* Admin Routes */}
-          <Route element={<RequireAdmin />}>
-            <Route path="/admin" element={<AdminLayout />}>
-              <Route index element={<AdminDashboard />} />
-              {/* Admin Product and Category Management */}
-              <Route path="products" element={<ProductsManagement />} />
-              <Route path="categories" element={<CategoriesManagement />} />
+            
+            {/* Admin Routes */}
+            <Route element={<RequireAdmin />}>
+              <Route path="/admin" element={<AdminLayout />}>
+                <Route index element={<AdminDashboard />} />
+                {/* Admin Product and Category Management */}
+                <Route path="products" element={<ProductsManagement />} />
+                <Route path="categories" element={<CategoriesManagement />} />
+                {/* Admin Order Management */}
+                <Route path="orders" element={<OrdersManagement />} />
+                <Route path="orders/:orderId" element={<AdminOrderDetail />} />
+                {/* Admin Quote Management */}
+                <Route path="quotes" element={<QuotesManagement />} />
+                <Route path="quotes/:quoteId" element={<AdminQuoteDetail />} />
+              </Route>
             </Route>
-          </Route>
-          
-          {/* Catch-all route */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </TooltipProvider>
+            
+            {/* Catch-all route */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </TooltipProvider>
+      </ProductProvider>
     </QueryClientProvider>
   );
 };

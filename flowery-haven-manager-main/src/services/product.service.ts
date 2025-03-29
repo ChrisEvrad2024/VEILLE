@@ -68,7 +68,9 @@ const getProductsByCategory = async (categoryId: string): Promise<Product[]> => 
 // Récupérer les produits populaires
 const getPopularProducts = async (): Promise<Product[]> => {
     try {
-        return await dbService.getByIndex<Product>("products", "popular", true);
+        // Au lieu d'utiliser l'index directement, récupérer tous les produits et filtrer
+        const allProducts = await getAllProducts();
+        return allProducts.filter(product => product.popular === true);
     } catch (error) {
         console.error("Error in getPopularProducts:", error);
         return [];
@@ -78,7 +80,9 @@ const getPopularProducts = async (): Promise<Product[]> => {
 // Récupérer les produits en vedette
 const getFeaturedProducts = async (): Promise<Product[]> => {
     try {
-        return await dbService.getByIndex<Product>("products", "featured", true);
+        // Au lieu d'utiliser l'index directement, récupérer tous les produits et filtrer
+        const allProducts = await getAllProducts();
+        return allProducts.filter(product => product.featured === true);
     } catch (error) {
         console.error("Error in getFeaturedProducts:", error);
         return [];

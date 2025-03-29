@@ -7,7 +7,8 @@
 
 // Configuration de la base de données
 const DB_NAME = 'chezFlora';
-const DB_VERSION = 2;
+// Set a higher initial version to prevent conflicts
+const DB_VERSION = 3;
 
 // Interface pour les options de requête
 interface QueryOptions {
@@ -136,8 +137,52 @@ const STORES_CONFIG = [
             { name: 'userId', keyPath: 'userId', options: { unique: false } },
             { name: 'timestamp', keyPath: 'timestamp', options: { unique: false } }
         ]
+    },
+    // Add quotes store configuration
+    {
+        name: 'quotes',
+        keyPath: 'id',
+        indexes: [
+            { name: 'userId', keyPath: 'userId', options: { unique: false } },
+            { name: 'status', keyPath: 'status', options: { unique: false } },
+            { name: 'createdAt', keyPath: 'createdAt', options: { unique: false } },
+            { name: 'eventType', keyPath: 'eventType', options: { unique: false } },
+            { name: 'expiresAt', keyPath: 'expiresAt', options: { unique: false } },
+            { name: 'requestId', keyPath: 'requestId', options: { unique: false } }
+        ]
+    },
+    // Add promoCodes store configuration
+    {
+        name: 'promoCodes',
+        keyPath: 'code',
+        indexes: [
+            { name: 'isActive', keyPath: 'isActive', options: { unique: false } },
+            { name: 'type', keyPath: 'type', options: { unique: false } },
+            { name: 'expiryDate', keyPath: 'expiryDate', options: { unique: false } }
+        ]
     }
 ];
+
+/**
+ * Function to get current database version
+ */
+const getCurrentDbVersion = (): Promise<number | null> => {
+    return new Promise((resolve) => {
+        // Open the database without specifying version
+        const request = indexedDB.open(DB_NAME);
+        
+        request.onsuccess = () => {
+            const version = request.result.version;
+            request.result.close();
+            resolve(version);
+        };
+        
+        request.onerror = () => {
+            // If there's an error, resolve with null - indicates no existing database
+            resolve(null);
+        };
+    });
+};
 
 /**
  * Fonction utilitaire pour supprimer la base de données (en développement)
@@ -175,16 +220,71 @@ const MAX_INIT_ATTEMPTS = 2;
 let CURRENT_DB_VERSION = DB_VERSION;
 
 /**
+ * Check if database exists with a version and reset if needed
+ */
+const checkAndResetIfNeeded = async (): Promise<void> => {
+    try {
+        // Get the current version of the database
+        const currentVersion = await getCurrentDbVersion();
+        
+        if (currentVersion !== null) {
+            // Database exists, adjust our version to be higher
+            CURRENT_DB_VERSION = Math.max(CURRENT_DB_VERSION, currentVersion);
+            
+            // If you're in development and want to force a reset
+            const forceReset = false; // Set to true to force database rebuild
+            
+            if (forceReset) {
+                console.log("Forcing database reset...");
+                await deleteDatabase();
+                CURRENT_DB_VERSION = DB_VERSION; // Reset to base version
+            }
+        }
+    } catch (error) {
+        console.error("Error checking database version:", error);
+    }
+};
+
+/**
  * Initialiser la base de données avec une approche non récursive
  */
-const initDatabase = (): Promise<IDBDatabase> => {
+const initDatabase = async (): Promise<IDBDatabase> => {
+    // First check if we need to adjust the version
+    await checkAndResetIfNeeded();
+    
     return new Promise((resolve, reject) => {
         console.log(`Opening database with version ${CURRENT_DB_VERSION}`);
         const request = indexedDB.open(DB_NAME, CURRENT_DB_VERSION);
         
         request.onerror = (event) => {
             console.error("Database error:", request.error);
-            reject(request.error);
+            
+            // If error is about version being too low, try to recover
+            if (request.error && request.error.name === 'VersionError') {
+                // Try to delete and recreate
+                deleteDatabase().then(() => {
+                    // Try again with a higher version
+                    CURRENT_DB_VERSION += 1;
+                    const newRequest = indexedDB.open(DB_NAME, CURRENT_DB_VERSION);
+                    
+                    newRequest.onupgradeneeded = (e) => {
+                        console.log(`Performing upgrade to version ${CURRENT_DB_VERSION} after reset`);
+                        createStores(newRequest.result);
+                    };
+                    
+                    newRequest.onsuccess = () => {
+                        console.log(`Database successfully reopened with version ${CURRENT_DB_VERSION}`);
+                        resolve(newRequest.result);
+                    };
+                    
+                    newRequest.onerror = () => {
+                        console.error("Failed to recreate database:", newRequest.error);
+                        reject(newRequest.error);
+                    };
+                }).catch(reject);
+            } else {
+                reject(request.error);
+            }
         };
         
         request.onsuccess = (event) => {
@@ -219,25 +319,7 @@ const initDatabase = (): Promise<IDBDatabase> => {
                     
                     newRequest.onupgradeneeded = (e) => {
                         console.log(`Performing upgrade to version ${CURRENT_DB_VERSION}`);
-                        const newDb = newRequest.result;
-                        
-                        STORES_CONFIG.forEach(store => {
-                            if (!newDb.objectStoreNames.contains(store.name)) {
-                                console.log(`Creating store: ${store.name}`);
-                                const storeOptions = {
-                                    keyPath: store.keyPath,
-                                    autoIncrement: !!store.autoIncrement
-                                };
-                                
-                                const objectStore = newDb.createObjectStore(store.name, storeOptions);
-                                
-                                if (store.indexes) {
-                                    store.indexes.forEach(index => {
-                                        objectStore.createIndex(index.name, index.keyPath, index.options);
-                                    });
-                                }
-                            }
-                        });
+                        createStores(newRequest.result);
                     };
                     
                     newRequest.onsuccess = () => {
@@ -250,32 +332,37 @@ const initDatabase = (): Promise<IDBDatabase> => {
         
         request.onupgradeneeded = (event) => {
             console.log(`Database upgrade needed. Old version: ${event.oldVersion}, New version: ${CURRENT_DB_VERSION}`);
-            const db = request.result;
-            
-            STORES_CONFIG.forEach(store => {
-                if (!db.objectStoreNames.contains(store.name)) {
-                    console.log(`Creating ${store.name} store`);
-                    const storeOptions: IDBObjectStoreParameters = {
-                        keyPath: store.keyPath
-                    };
-                    
-                    if (store.autoIncrement) {
-                        storeOptions.autoIncrement = true;
-                    }
-                    
-                    const objectStore = db.createObjectStore(store.name, storeOptions);
-                    
-                    if (store.indexes) {
-                        store.indexes.forEach(index => {
-                            objectStore.createIndex(index.name, index.keyPath, index.options);
-                        });
-                    }
-                }
-            });
-            
-            console.log("Database upgrade completed");
+            createStores(request.result);
         };
     });
+};
+
+/**
+ * Helper function to create stores
+ */
+const createStores = (db: IDBDatabase): void => {
+    STORES_CONFIG.forEach(store => {
+        if (!db.objectStoreNames.contains(store.name)) {
+            console.log(`Creating ${store.name} store`);
+            const storeOptions: IDBObjectStoreParameters = {
+                keyPath: store.keyPath
+            };
+            
+            if (store.autoIncrement) {
+                storeOptions.autoIncrement = true;
+            }
+            
+            const objectStore = db.createObjectStore(store.name, storeOptions);
+            
+            if (store.indexes) {
+                store.indexes.forEach(index => {
+                    objectStore.createIndex(index.name, index.keyPath, index.options);
+                });
+            }
+        }
+    });
+    
+    console.log("Database upgrade completed");
 };
 
 /**
@@ -374,6 +461,11 @@ const getItemById = async <T>(storeName: string, id: string | number): Promise<T
 };
 
 /**
+ * Alias pour getItemById pour maintenir la compatibilité avec le code existant
+ */
+const get = getItemById;
+
+/**
  * Supprimer un élément par son ID
  */
 const deleteItem = async (storeName: string, id: string | number): Promise<boolean> => {
@@ -435,8 +527,28 @@ const getAllItems = async <T>(storeName: string, options: QueryOptions = {}): Pr
 };
 
 /**
+ * Alias pour getAllItems pour maintenir la compatibilité avec le code existant
+ */
+const getAll = getAllItems;
+
+/**
+ * Fonction pour récupérer les éléments par statut
+ */
+const getByStatus = async <T>(storeName: string, status: string): Promise<T[]> => {
+    return getByIndex(storeName, 'status', status);
+};
+
+/**
+ * Fonction pour récupérer les éléments par userId
+ */
+const getByUserId = async <T>(storeName: string, userId: string): Promise<T[]> => {
+    return getByIndex(storeName, 'userId', userId);
+};
+
+/**
  * Récupérer des éléments par un index
  */
+// Modifiez la fonction getByIndex dans db.service.ts pour mieux gérer les booléens:
 const getByIndex = async <T>(
     storeName: string,
     indexName: string,
@@ -455,25 +567,51 @@ const getByIndex = async <T>(
             }
 
             const index = store.index(indexName);
-            const request = index.getAll(value);
+            
+            // Si nous recherchons par valeur booléenne, nous utilisons une autre approche
+            if (typeof value === 'boolean') {
+                // Récupérer tous les éléments et filtrer manuellement
+                const allRequest = store.getAll();
+                
+                allRequest.onsuccess = () => {
+                    const result = allRequest.result.filter(item => item[indexName] === value);
+                    
+                    // Appliquer la pagination si des options sont fournies
+                    if (options.offset !== undefined || options.limit !== undefined) {
+                        const offset = options.offset || 0;
+                        const limit = options.limit || result.length;
+                        resolve(result.slice(offset, offset + limit));
+                    } else {
+                        resolve(result);
+                    }
+                };
+                
+                allRequest.onerror = () => {
+                    console.error(`Error getting items by boolean index from ${storeName}:`, allRequest.error);
+                    reject(allRequest.error);
+                };
+            } else {
+                // Pour les autres types, utiliser getAll comme avant
+                const request = index.getAll(value);
 
-            request.onsuccess = () => {
-                let result = request.result;
+                request.onsuccess = () => {
+                    let result = request.result;
 
-                // Appliquer la pagination si des options sont fournies
-                if (options.offset !== undefined || options.limit !== undefined) {
-                    const offset = options.offset || 0;
-                    const limit = options.limit || result.length;
-                    result = result.slice(offset, offset + limit);
-                }
+                    // Appliquer la pagination si des options sont fournies
+                    if (options.offset !== undefined || options.limit !== undefined) {
+                        const offset = options.offset || 0;
+                        const limit = options.limit || result.length;
+                        result = result.slice(offset, offset + limit);
+                    }
 
-                resolve(result);
-            };
+                    resolve(result);
+                };
 
-            request.onerror = () => {
-                console.error(`Error getting items by index from ${storeName}:`, request.error);
-                reject(request.error);
-            };
+                request.onerror = () => {
+                    console.error(`Error getting items by index from ${storeName}:`, request.error);
+                    reject(request.error);
+                };
+            }
 
             transaction.oncomplete = () => {
                 db.close();
@@ -625,6 +763,18 @@ const storeExists = async (storeName: string): Promise<boolean> => {
 };
 
 /**
+ * Récupérer les codes promo actifs
+ */
+const getActivePromoCodes = async <T>(): Promise<T[]> => {
+    try {
+        return await getByIndex<T>('promoCodes', 'isActive', true);
+    } catch (error) {
+        console.error('Error getting active promo codes:', error);
+        return [];
+    }
+};
+
+/**
  * Exporter les fonctions du service
  */
 export const dbService = {
@@ -634,13 +784,18 @@ export const dbService = {
     addItem,
     updateItem,
     getItemById,
+    get,
     deleteItem,
     getAllItems,
+    getAll,
     getByIndex,
+    getByStatus,
+    getByUserId,
     getOneByIndex,
     searchByField,
     clearStore,
     itemExists,
     countItems,
-    storeExists
+    storeExists,
+    getActivePromoCodes
 };

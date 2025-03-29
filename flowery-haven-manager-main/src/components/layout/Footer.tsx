@@ -118,7 +118,7 @@ const Footer =  () => {
         </div>
 
         <div className="border-t border-border mt-12 pt-8 text-center text-muted-foreground text-sm">
-          <p>&copy; {currentYear} ChezFlora. Tous droits réservés.</p>
+          <p>&copy; {currentYear} ChezFlora. Tous droits réservés. By OMGBA FOUDA Chris Evrad.</p>
         </div>
       </div>
     </footer>

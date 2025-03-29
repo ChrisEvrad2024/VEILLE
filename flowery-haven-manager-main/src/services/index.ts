@@ -18,6 +18,7 @@ import { analyticsService } from './analytics.service';
 import { ratingService } from './rating.service';
 import { userManagementService } from './user-management.service';
 import { loginHistoryService } from './login-history.service';
+import { imageService } from './image.service';
 
 import {
     cartAdapter,
@@ -63,6 +64,7 @@ export {
     
     // Services liés aux produits et catalogue
     productService,
+    imageService,
     cartService,
     wishlistService,
     ratingService,

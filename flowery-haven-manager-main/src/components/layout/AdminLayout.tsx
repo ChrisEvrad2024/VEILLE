@@ -68,7 +68,17 @@ const AdminLayout = () => {
           icon: <Tags className="h-4 w-4" />,
           path: "/admin/categories",
         }
-      ]
+      ],
+    },
+    {
+      label: "Commandes",
+      icon: <ShoppingBag className="h-5 w-5" />,
+      path: "/admin/orders",
+    },
+    {
+      label: "Devis",
+      icon: <FileText className="h-5 w-5" />,
+      path: "/admin/quotes",
     },
     {
       label: "Blog",

@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { getProductById, getPopularProducts, getProductsByCategory, getAllCategories } from '@/lib/data';
 import { addToRecentlyViewed, getRecentlyViewed } from '@/lib/recentlyViewed';
 import { addToWishlist, removeFromWishlist, isInWishlist } from '@/lib/wishlist';
 import { addToCart } from '@/lib/cart';
@@ -49,6 +48,10 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
+// Importer productService au lieu des fonctions de lib/data
+import { productService } from "@/services/product.service";
+import { Product, Category } from "@/types/product";
+
 // Mock color options for demonstration
 const COLORS = [
   { name: 'Rouge', value: '#DC2626' },
@@ -61,23 +64,92 @@ const COLORS = [
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const product = id ? getProductById(id) : undefined;
-  const categories = getAllCategories();
+  
+  // États pour les données chargées de façon asynchrone
+  const [product, setProduct] = useState<Product | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  
+  // Autres états du composant
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
   const [inWishlist, setInWishlist] = useState(false);
   const [isLinkCopied, setIsLinkCopied] = useState(false);
-  const [recentlyViewed, setRecentlyViewed] = useState<any[]>([]);
+  const [recentlyViewed, setRecentlyViewed] = useState<Product[]>([]);
   const [selectedColor, setSelectedColor] = useState(COLORS[0]);
-  const [relatedProducts, setRelatedProducts] = useState<any[]>([]);
+  const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
+  const [popularProducts, setPopularProducts] = useState<Product[]>([]);
   
+  // Déterminer si le produit est en stock
   const isInStock = product?.stock === undefined || (product?.stock || 0) > 0;
   
-  // Get the category name
-  const categoryName = product ? 
+  // Obtenir le nom de la catégorie
+  const categoryName = product && categories.length > 0 ? 
     categories.find(cat => cat.id === product.category)?.name || product.category : 
     '';
+
+  // Charger les données du produit et des catégories
+  useEffect(() => {
+    const fetchProductData = async () => {
+      if (!id) return;
+      
+      setIsLoading(true);
+      setLoadError(null);
+      
+      try {
+        console.log("Chargement des données du produit:", id);
+        
+        // Charger le produit
+        const productData = await productService.getProductById(id);
+        if (!productData) {
+          console.error("Produit non trouvé:", id);
+          setLoadError("Le produit demandé n'existe pas ou a été supprimé.");
+          setProduct(null);
+          setIsLoading(false);
+          return;
+        }
+        
+        console.log("Produit trouvé:", productData);
+        setProduct(productData);
+        
+        // Charger les catégories
+        const allCategories = await productService.getAllCategories();
+        console.log("Catégories chargées:", allCategories.length);
+        setCategories(allCategories);
+        
+        // Charger les produits similaires (de la même catégorie)
+        if (productData.category) {
+          const categoryProducts = await productService.getProductsByCategory(productData.category);
+          console.log("Produits de la même catégorie:", categoryProducts.length);
+          setRelatedProducts(
+            categoryProducts
+              .filter(p => p.id !== productData.id)
+              .slice(0, 4)
+          );
+        }
+        
+        // Charger les produits populaires
+        const popularProds = await productService.getPopularProducts();
+        console.log("Produits populaires:", popularProds.length);
+        setPopularProducts(
+          popularProds
+            .filter(p => p.id !== productData.id)
+            .slice(0, 4)
+        );
+        
+      } catch (error) {
+        console.error("Erreur lors du chargement des données:", error);
+        setLoadError("Une erreur est survenue lors du chargement des données.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchProductData();
+  }, [id]);
   
+  // Gérer le stockage local (recently viewed, wishlist, etc.)
   useEffect(() => {
     // Reset scroll position when navigating to a new product
     window.scrollTo(0, 0);
@@ -95,23 +167,42 @@ const ProductDetail = () => {
       // Get recently viewed products (exclude current product)
       const viewed = getRecentlyViewed().filter(item => item.id !== product.id);
       setRecentlyViewed(viewed);
-      
-      // Get related products from the same category
-      const categoryProducts = getProductsByCategory(product.category)
-        .filter(p => p.id !== product.id)
-        .slice(0, 4);
-      setRelatedProducts(categoryProducts);
     }
-  }, [id, product]);
+  }, [product]);
   
-  if (!product) {
+  if (isLoading) {
+    return (
+      <>
+        <Navbar />
+        <main className="pt-32 pb-16 min-h-screen">
+          <div className="container max-w-7xl mx-auto px-4 lg:px-8">
+            <div className="animate-pulse space-y-8">
+              <div className="h-6 w-2/3 bg-muted rounded"></div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                <div className="aspect-square bg-muted rounded"></div>
+                <div className="space-y-4">
+                  <div className="h-8 w-3/4 bg-muted rounded"></div>
+                  <div className="h-4 w-1/2 bg-muted rounded"></div>
+                  <div className="h-8 w-1/3 bg-muted rounded"></div>
+                  <div className="h-20 w-full bg-muted rounded"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </>
+    );
+  }
+  
+  if (loadError || !product) {
     return (
       <>
         <Navbar />
         <main className="pt-32 pb-16 min-h-screen">
           <div className="container max-w-7xl mx-auto px-4 lg:px-8 text-center">
             <h1 className="text-2xl font-serif mb-4">Produit non trouvé</h1>
-            <p className="mb-8">Le produit que vous recherchez n'existe pas ou a été retiré.</p>
+            <p className="mb-8">{loadError || "Le produit que vous recherchez n'existe pas ou a été retiré."}</p>
             <Link to="/catalog" className="btn-primary inline-flex">
               Retour à la boutique
             </Link>
@@ -652,14 +743,16 @@ const ProductDetail = () => {
           )}
           
           {/* You may also like */}
-          <div className="mt-24">
-            <h2 className="text-2xl font-serif mb-8">Vous pourriez aussi aimer</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {getPopularProducts().slice(0, 4).filter(p => p.id !== product.id).map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
+          {popularProducts.length > 0 && (
+            <div className="mt-24">
+              <h2 className="text-2xl font-serif mb-8">Vous pourriez aussi aimer</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                {popularProducts.map((product) => (
+                  <ProductCard key={product.id} product={product} />
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </main>
       <Footer />

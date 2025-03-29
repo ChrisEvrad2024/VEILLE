@@ -1,230 +1,355 @@
 // src/services/order.service.ts
+import { v4 as uuidv4 } from 'uuid';
 import { dbService } from './db.service';
+import { cartService } from './cart.service';
 import { authService } from './auth.service';
-import { cartService, CartItem } from './cart.service';
-import { addressService, Address } from './address.service';
+import { Order, OrderItem, OrderStatus, OrderStatusHistory, OrderAddress, PaymentInfo } from '@/types/order';
 
-// Types pour les commandes
-export interface OrderItem {
-    productId: string;
-    name: string;
-    price: number;
-    quantity: number;
-    imageUrl: string;
-}
+class OrderService {
+  private orderHistoryKey = 'orderStatusHistory';
 
-export interface Order {
-    id: string;
-    userId: string;
-    orderItems: OrderItem[];
-    orderDate: Date;
-    status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
-    total: number;
-    shippingAddress: Address;
-    billingAddress: Address;
-    paymentMethod: string;
-    trackingNumber?: string;
-    notes?: string;
-}
-
-// Créer une nouvelle commande
-const createOrder = async (
-    shippingAddressId: string,
-    billingAddressId: string,
-    paymentMethod: string,
-    notes?: string
-): Promise<Order> => {
+  // Méthodes de récupération
+  async getOrderById(orderId: string): Promise<Order | null> {
     try {
-        const currentUser = authService.getCurrentUser();
+      const order = await dbService.get<Order>('orders', orderId);
+      return order || null;
+    } catch (error) {
+      console.error('Error getting order:', error);
+      return null;
+    }
+  }
 
-        if (!currentUser) {
-            throw new Error("Utilisateur non authentifié");
-        }
+  async getOrdersByUser(userId: string): Promise<Order[]> {
+    try {
+      const orders = await dbService.getByUserId<Order>('orders', userId);
+      return orders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    } catch (error) {
+      console.error('Error getting user orders:', error);
+      return [];
+    }
+  }
 
-        // Récupérer le panier
-        const cartItems = await cartService.getCart();
+  async getOrdersByStatus(status: OrderStatus): Promise<Order[]> {
+    try {
+      const orders = await dbService.getByStatus<Order>('orders', status);
+      return orders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    } catch (error) {
+      console.error('Error getting orders by status:', error);
+      return [];
+    }
+  }
 
-        if (cartItems.length === 0) {
-            throw new Error("Le panier est vide");
-        }
+  async getAllOrders(): Promise<Order[]> {
+    try {
+      const orders = await dbService.getAll<Order>('orders');
+      return orders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    } catch (error) {
+      console.error('Error getting all orders:', error);
+      return [];
+    }
+  }
 
-        // Récupérer les adresses
-        const shippingAddress = await addressService.getAddressById(shippingAddressId);
-        const billingAddress = await addressService.getAddressById(billingAddressId);
+  // Création de commande
+  async createOrder(
+    shippingAddress: OrderAddress,
+    billingAddress: OrderAddress | null = null,
+    paymentMethod: PaymentInfo['method'] = 'card'
+  ): Promise<{ success: boolean; orderId?: string; message: string }> {
+    try {
+      // Vérifier l'authentification
+      const currentUser = authService.getCurrentUser();
+      if (!currentUser) {
+        return { success: false, message: 'Vous devez être connecté pour passer une commande.' };
+      }
 
-        if (!shippingAddress || !billingAddress) {
-            throw new Error("Adresses invalides");
-        }
+      // Récupérer le panier et calculer les totaux
+      const cartItems = await cartService.getCart();
+      if (cartItems.length === 0) {
+        return { success: false, message: 'Votre panier est vide.' };
+      }
 
-        // Calculer le total
-        const total = cartItems.reduce((sum, item) => {
-            const price = item.product?.price || 0;
-            return sum + (price * item.quantity);
-        }, 0);
+      const { subtotal, shipping, discount, total } = await cartService.getFinalTotal();
+      const promoCode = await cartService.getAppliedPromoCode();
+      
+      // Créer les éléments de commande
+      const orderId = uuidv4();
+      const now = new Date().toISOString();
+      
+      const orderItems: OrderItem[] = cartItems.map(item => ({
+        productId: item.productId,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        image: item.image,
+        options: item.options,
+        orderId,
+        priceAtPurchase: item.price
+      }));
 
-        // Créer les articles de la commande
-        const orderItems: OrderItem[] = cartItems.map(item => ({
-            productId: item.productId,
-            name: item.product?.name || "Produit inconnu",
-            price: item.product?.price || 0,
-            quantity: item.quantity,
-            imageUrl: item.product?.images[0] || ""
-        }));
+      // Créer l'objet de commande
+      const order: Order = {
+        id: orderId,
+        userId: currentUser.id,
+        items: orderItems,
+        status: 'pending',
+        createdAt: now,
+        updatedAt: now,
+        shippingAddress,
+        billingAddress: billingAddress || shippingAddress,
+        paymentInfo: {
+          method: paymentMethod,
+          status: 'pending',
+        },
+        subtotal,
+        shipping,
+        discount,
+        total,
+        promoCodeApplied: promoCode?.code
+      };
 
-        // Créer la commande
-        const newOrder: Order = {
-            id: `order_${Date.now()}`,
-            userId: currentUser.id,
-            orderItems,
-            orderDate: new Date(),
-            status: 'pending',
-            total,
-            shippingAddress,
-            billingAddress,
-            paymentMethod,
-            notes
+      // Enregistrer la commande dans la base de données
+      await dbService.add('orders', order);
+
+      // Enregistrer l'historique du statut
+      await this.addOrderStatusHistory(orderId, 'pending', 'Commande créée');
+
+      // Vider le panier après commande réussie
+      await cartService.clearCart();
+
+      return { 
+        success: true, 
+        orderId, 
+        message: 'Votre commande a été créée avec succès.' 
+      };
+    } catch (error) {
+      console.error('Error creating order:', error);
+      return { 
+        success: false, 
+        message: 'Une erreur est survenue lors de la création de votre commande. Veuillez réessayer.' 
+      };
+    }
+  }
+
+  // Mise à jour du statut de commande
+  async updateOrderStatus(
+    orderId: string, 
+    newStatus: OrderStatus, 
+    note?: string
+  ): Promise<{ success: boolean; message: string }> {
+    try {
+      const order = await this.getOrderById(orderId);
+      if (!order) {
+        return { success: false, message: 'Commande introuvable.' };
+      }
+
+      // Mettre à jour la commande
+      const updatedOrder: Order = {
+        ...order,
+        status: newStatus,
+        updatedAt: new Date().toISOString()
+      };
+
+      // Si le statut est shipped, ajouter des informations de suivi fictives
+      if (newStatus === 'shipped' && !updatedOrder.trackingInfo) {
+        updatedOrder.trackingInfo = {
+          carrier: 'Chronopost',
+          trackingNumber: `TRK${Math.floor(Math.random() * 10000000)}`,
+          url: 'https://www.chronopost.fr/tracking'
         };
+      }
 
-        // Enregistrer la commande
-        await dbService.addItem("orders", newOrder);
+      await dbService.put('orders', updatedOrder);
 
-        // Vider le panier
-        await cartService.clearCart();
+      // Ajouter à l'historique des statuts
+      await this.addOrderStatusHistory(
+        orderId, 
+        newStatus, 
+        note || `Statut mis à jour: ${newStatus}`,
+        authService.getCurrentUser()?.id
+      );
 
-        return newOrder;
+      return { success: true, message: 'Statut de la commande mis à jour avec succès.' };
     } catch (error) {
-        console.error("Error in createOrder:", error);
-        throw error;
+      console.error('Error updating order status:', error);
+      return { success: false, message: 'Une erreur est survenue lors de la mise à jour du statut.' };
     }
-};
+  }
 
-// Récupérer les commandes de l'utilisateur
-const getUserOrders = async (): Promise<Order[]> => {
+  // Historique des statuts
+  private async addOrderStatusHistory(
+    orderId: string,
+    status: OrderStatus,
+    note?: string,
+    updatedBy?: string
+  ): Promise<void> {
     try {
-        const currentUser = authService.getCurrentUser();
+      const historyItem: OrderStatusHistory = {
+        orderId,
+        status,
+        timestamp: new Date().toISOString(),
+        note,
+        updatedBy
+      };
 
-        if (!currentUser) {
-            return [];
-        }
-
-        return await dbService.getByIndex<Order>("orders", "userId", currentUser.id);
+      // Récupérer l'historique existant
+      const existingHistory = this.getOrderStatusHistoryFromStorage(orderId);
+      
+      // Ajouter le nouvel élément
+      existingHistory.push(historyItem);
+      
+      // Sauvegarder
+      localStorage.setItem(
+        `${this.orderHistoryKey}_${orderId}`, 
+        JSON.stringify(existingHistory)
+      );
     } catch (error) {
-        console.error("Error in getUserOrders:", error);
-        return [];
+      console.error('Error adding order status history:', error);
     }
-};
+  }
 
-// Récupérer une commande par son ID
-const getOrderById = async (orderId: string): Promise<Order | null> => {
+  async getOrderStatusHistory(orderId: string): Promise<OrderStatusHistory[]> {
+    return this.getOrderStatusHistoryFromStorage(orderId);
+  }
+
+  private getOrderStatusHistoryFromStorage(orderId: string): OrderStatusHistory[] {
     try {
-        const order = await dbService.getItemById<Order>("orders", orderId);
-
-        if (!order) {
-            return null;
-        }
-
-        // Vérifier que l'utilisateur actuel est bien le propriétaire de la commande
-        const currentUser = authService.getCurrentUser();
-
-        if (!currentUser || (order.userId !== currentUser.id && !authService.isAdmin())) {
-            return null;
-        }
-
-        return order;
-    } catch (error) {
-        console.error(`Error in getOrderById for order ${orderId}:`, error);
-        return null;
+      const history = localStorage.getItem(`${this.orderHistoryKey}_${orderId}`);
+      return history ? JSON.parse(history) : [];
+    } catch {
+      return [];
     }
-};
+  }
 
-// Mettre à jour le statut d'une commande (admin uniquement)
-const updateOrderStatus = async (orderId: string, status: Order['status']): Promise<boolean> => {
+  // Méthodes auxiliaires
+  getOrderStatusConfig(status: OrderStatus): { 
+    label: string; 
+    color: string; 
+    icon: string;
+    description: string;
+  } {
+    const statusConfig = {
+      pending: {
+        label: 'En attente',
+        color: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+        icon: 'Clock',
+        description: 'Votre commande a été reçue et est en attente de traitement.'
+      },
+      processing: {
+        label: 'En traitement',
+        color: 'bg-blue-100 text-blue-800 border-blue-200',
+        icon: 'RotateCw',
+        description: 'Nous préparons actuellement votre commande.'
+      },
+      shipped: {
+        label: 'Expédiée',
+        color: 'bg-purple-100 text-purple-800 border-purple-200',
+        icon: 'Truck',
+        description: 'Votre commande a été expédiée et est en route.'
+      },
+      delivered: {
+        label: 'Livrée',
+        color: 'bg-green-100 text-green-800 border-green-200',
+        icon: 'CheckCircle',
+        description: 'Votre commande a été livrée avec succès.'
+      },
+      cancelled: {
+        label: 'Annulée',
+        color: 'bg-red-100 text-red-800 border-red-200',
+        icon: 'XCircle',
+        description: 'Votre commande a été annulée.'
+      },
+      refunded: {
+        label: 'Remboursée',
+        color: 'bg-gray-100 text-gray-800 border-gray-200',
+        icon: 'RefreshCw',
+        description: 'Un remboursement a été effectué pour cette commande.'
+      }
+    };
+
+    return statusConfig[status];
+  }
+
+  // Méthode pour l'annulation par l'utilisateur
+  async cancelOrder(
+    orderId: string, 
+    reason: string
+  ): Promise<{ success: boolean; message: string }> {
     try {
-        if (!authService.isAdmin()) {
-            throw new Error("Permission refusée");
-        }
+      const order = await this.getOrderById(orderId);
+      if (!order) {
+        return { success: false, message: 'Commande introuvable.' };
+      }
 
-        const order = await dbService.getItemById<Order>("orders", orderId);
+      // Vérifier si la commande peut être annulée (seulement si en attente ou en traitement)
+      if (order.status !== 'pending' && order.status !== 'processing') {
+        return { 
+          success: false, 
+          message: 'Cette commande ne peut plus être annulée car elle a déjà été expédiée.' 
+        };
+      }
 
-        if (!order) {
-            return false;
-        }
-
-        // Mettre à jour le statut
-        order.status = status;
-
-        // Si expédié, ajouter un numéro de suivi
-        if (status === 'shipped' && !order.trackingNumber) {
-            order.trackingNumber = `TRK${Math.floor(Math.random() * 1000000)}`;
-        }
-
-        // Enregistrer les modifications
-        await dbService.updateItem("orders", order);
-
-        return true;
+      return this.updateOrderStatus(orderId, 'cancelled', `Annulée par le client: ${reason}`);
     } catch (error) {
-        console.error(`Error in updateOrderStatus for order ${orderId}:`, error);
-        return false;
+      console.error('Error cancelling order:', error);
+      return { success: false, message: 'Une erreur est survenue lors de l\'annulation de la commande.' };
     }
-};
-
-// Annuler une commande
-const cancelOrder = async (orderId: string): Promise<boolean> => {
+  }
+  
+  // Méthodes pour les rapports et statistiques
+  async getOrdersStatistics(): Promise<{
+    totalOrders: number;
+    totalRevenue: number;
+    averageOrderValue: number;
+    ordersByStatus: Record<OrderStatus, number>;
+  }> {
     try {
-        const currentUser = authService.getCurrentUser();
-
-        if (!currentUser) {
-            throw new Error("Utilisateur non authentifié");
+      const orders = await this.getAllOrders();
+      
+      const totalOrders = orders.length;
+      const totalRevenue = orders.reduce((sum, order) => sum + order.total, 0);
+      const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+      
+      // Compter les commandes par statut
+      const ordersByStatus = orders.reduce((acc, order) => {
+        acc[order.status] = (acc[order.status] || 0) + 1;
+        return acc;
+      }, {} as Record<OrderStatus, number>);
+      
+      // S'assurer que tous les statuts sont représentés
+      const allStatuses: OrderStatus[] = [
+        'pending', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'
+      ];
+      
+      allStatuses.forEach(status => {
+        if (!ordersByStatus[status]) {
+          ordersByStatus[status] = 0;
         }
-
-        const order = await dbService.getItemById<Order>("orders", orderId);
-
-        if (!order) {
-            return false;
-        }
-
-        // Vérifier que l'utilisateur est le propriétaire ou un admin
-        if (order.userId !== currentUser.id && !authService.isAdmin()) {
-            throw new Error("Permission refusée");
-        }
-
-        // Vérifier que la commande peut être annulée
-        if (order.status === 'shipped' || order.status === 'delivered') {
-            throw new Error("Impossible d'annuler une commande expédiée ou livrée");
-        }
-
-        // Mettre à jour le statut
-        order.status = 'cancelled';
-
-        // Enregistrer les modifications
-        await dbService.updateItem("orders", order);
-
-        return true;
+      });
+      
+      return {
+        totalOrders,
+        totalRevenue,
+        averageOrderValue,
+        ordersByStatus
+      };
     } catch (error) {
-        console.error(`Error in cancelOrder for order ${orderId}:`, error);
-        return false;
-    }
-};
-
-// Récupérer toutes les commandes (admin uniquement)
-const getAllOrders = async (): Promise<Order[]> => {
-    try {
-        if (!authService.isAdmin()) {
-            throw new Error("Permission refusée");
+      console.error('Error getting orders statistics:', error);
+      return {
+        totalOrders: 0,
+        totalRevenue: 0,
+        averageOrderValue: 0,
+        ordersByStatus: {
+          pending: 0,
+          processing: 0,
+          shipped: 0,
+          delivered: 0,
+          cancelled: 0,
+          refunded: 0
         }
-
-        return await dbService.getAllItems<Order>("orders");
-    } catch (error) {
-        console.error("Error in getAllOrders:", error);
-        return [];
+      };
     }
-};
+  }
+}
 
-export const orderService = {
-    createOrder,
-    getUserOrders,
-    getOrderById,
-    updateOrderStatus,
-    cancelOrder,
-    getAllOrders
-};
+export const orderService = new OrderService();
+export type { Order, OrderItem, OrderStatus, OrderStatusHistory, OrderAddress, PaymentInfo };

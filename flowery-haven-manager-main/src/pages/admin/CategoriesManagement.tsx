@@ -83,7 +83,6 @@ const CategoriesManagement = () => {
     } finally {
       setIsLoading(false);
     }
-    loadCategories();
   };
 
   useEffect(() => {
