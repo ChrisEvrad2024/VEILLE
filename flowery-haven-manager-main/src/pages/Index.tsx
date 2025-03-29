@@ -4,9 +4,31 @@ import Hero from '@/components/home/Hero';
 import FeaturedProducts from '@/components/home/FeaturedProducts';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
+import { useState, useEffect } from "react";
+import { productService } from "@/services/product.service";
+import { Product } from "@/types/product";
 
 // Composant correctement défini sans async
 const Index = () => {
+  const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  useEffect(() => {
+    const loadFeaturedProducts = async () => {
+      setIsLoading(true);
+      try {
+        // Récupérer les produits en vedette depuis la base de données
+        const products = await productService.getFeaturedProducts();
+        setFeaturedProducts(products);
+      } catch (error) {
+        console.error("Error loading featured products:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadFeaturedProducts();
+  }, []);
   return (
     <>
       <Navbar />

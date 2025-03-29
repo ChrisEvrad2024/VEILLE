@@ -1,174 +1,337 @@
-import { useEffect, useState } from "react";
-import { Outlet, Link, useNavigate, useLocation } from "react-router-dom";
-import { LayoutDashboard, Package, ShoppingCart, Users, FileText, BarChart3, Settings, LogOut } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { useState, useEffect } from "react";
+import { Outlet, NavLink, useLocation, useNavigate } from "react-router-dom";
+import { 
+  LayoutDashboard, 
+  ShoppingBag, 
+  Tags, 
+  FileText, 
+  Users, 
+  Settings, 
+  ChevronDown, 
+  ChevronRight, 
+  Menu, 
+  X,
+  LogOut,
+  Home
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
-import { toast } from "sonner";
-import { authService } from "@/services/auth.service";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { 
+  Sheet, 
+  SheetContent, 
+  SheetTrigger 
+} from "@/components/ui/sheet";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
-// Admin navigation items
-const navItems = [
-  {
-    title: "Dashboard",
-    href: "/admin",
-    icon: <LayoutDashboard size={18} />,
-  },
-  {
-    title: "Produits",
-    href: "/admin/products",
-    icon: <Package size={18} />,
-  },
-  {
-    title: "Blog",
-    href: "/admin/blog",
-    icon: <FileText size={18} />,
-  },
-  {
-    title: "Clients",
-    href: "/admin/customers",
-    icon: <Users size={18} />,
-  },
-  {
-    title: "Commandes",
-    href: "/admin/orders",
-    icon: <ShoppingCart size={18} />,
-  },
-  {
-    title: "Statistiques",
-    href: "/admin/analytics",
-    icon: <BarChart3 size={18} />,
-  },
-  {
-    title: "Paramètres",
-    href: "/admin/settings",
-    icon: <Settings size={18} />,
-  },
-];
+// Type de menu
+interface MenuItem {
+  label: string;
+  icon: React.ReactNode;
+  path: string;
+  children?: MenuItem[];
+  expanded?: boolean;
+}
 
 const AdminLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const [userData, setUserData] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [activeMenu, setActiveMenu] = useState<string>("");
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([
+    {
+      label: "Tableau de bord",
+      icon: <LayoutDashboard className="h-5 w-5" />,
+      path: "/admin",
+    },
+    {
+      label: "Catalogue",
+      icon: <ShoppingBag className="h-5 w-5" />,
+      path: "#",
+      expanded: true,
+      children: [
+        {
+          label: "Produits",
+          icon: <ShoppingBag className="h-4 w-4" />,
+          path: "/admin/products",
+        },
+        {
+          label: "Catégories",
+          icon: <Tags className="h-4 w-4" />,
+          path: "/admin/categories",
+        }
+      ]
+    },
+    {
+      label: "Blog",
+      icon: <FileText className="h-5 w-5" />,
+      path: "#",
+      children: [
+        {
+          label: "Articles",
+          icon: <FileText className="h-4 w-4" />,
+          path: "/admin/blog-posts",
+        }
+      ]
+    },
+    {
+      label: "Clients",
+      icon: <Users className="h-5 w-5" />,
+      path: "/admin/customers",
+    },
+    {
+      label: "Paramètres",
+      icon: <Settings className="h-5 w-5" />,
+      path: "/admin/settings",
+    }
+  ]);
+
+  // Determine active menu based on current path
   useEffect(() => {
-    // Check if user is authenticated AND is admin
-    if (!authService.isAuthenticated()) {
-      navigate("/auth/login");
-      toast.error("Veuillez vous connecter pour accéder à l'administration");
-      return;
-    }
+    const currentPath = location.pathname;
     
-    if (!authService.isAdmin()) {
-      navigate("/");
-      toast.error("Vous n'avez pas les permissions nécessaires pour accéder à cette page");
-      return;
-    }
+    // Find the main menu item that contains the current path
+    const mainMenuItem = menuItems.find(item => 
+      item.path === currentPath || 
+      (item.children && item.children.some(child => child.path === currentPath))
+    );
     
-    // Get current user data
-    const currentUser = authService.getCurrentUser();
-    if (currentUser) {
-      setUserData(currentUser);
+    if (mainMenuItem) {
+      setActiveMenu(mainMenuItem.label);
+      
+      // If this menu has children, ensure it's expanded
+      if (mainMenuItem.children) {
+        setMenuItems(prevItems => 
+          prevItems.map(item => 
+            item.label === mainMenuItem.label 
+              ? { ...item, expanded: true } 
+              : item
+          )
+        );
+      }
     }
-    
-    setIsLoading(false);
-  }, [navigate]);
-  
-  // Logout handler
-  const handleLogout = () => {
-    authService.logout();
-    toast.success("Déconnexion réussie");
-    navigate("/");
+  }, [location.pathname]);
+
+  // Toggle menu expansion
+  const toggleSubmenu = (menuLabel: string) => {
+    setMenuItems(prevItems => 
+      prevItems.map(item => 
+        item.label === menuLabel 
+          ? { ...item, expanded: !item.expanded } 
+          : item
+      )
+    );
   };
-  
-  if (isLoading) {
+
+  // Handle logout
+  const handleLogout = () => {
+    // In a real app, this would clear authentication state
+    navigate('/auth/login');
+  };
+
+  // Render menu item with possible children
+  const renderMenuItem = (item: MenuItem) => {
+    const isActive = location.pathname === item.path;
+    const hasChildren = item.children && item.children.length > 0;
+    const showChildren = hasChildren && item.expanded;
+    
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-pulse">Chargement...</div>
+      <div key={item.label} className="space-y-1">
+        {hasChildren ? (
+          <>
+            <button
+              className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                activeMenu === item.label 
+                  ? "bg-primary text-primary-foreground" 
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              }`}
+              onClick={() => toggleSubmenu(item.label)}
+            >
+              <div className="flex items-center gap-3">
+                {item.icon}
+                <span>{item.label}</span>
+              </div>
+              {item.expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            </button>
+            
+            {showChildren && (
+              <div className="pl-8 space-y-1">
+                {item.children?.map(child => (
+                  <NavLink
+                    key={child.path}
+                    to={child.path}
+                    className={({ isActive }) => `
+                      flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors
+                      ${isActive 
+                        ? "bg-muted text-foreground font-medium" 
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      }
+                    `}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    {child.icon}
+                    <span>{child.label}</span>
+                  </NavLink>
+                ))}
+              </div>
+            )}
+          </>
+        ) : (
+          <NavLink
+            to={item.path}
+            className={({ isActive }) => `
+              flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors
+              ${isActive 
+                ? "bg-primary text-primary-foreground" 
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              }
+            `}
+            onClick={() => setIsMobileMenuOpen(false)}
+          >
+            {item.icon}
+            <span>{item.label}</span>
+          </NavLink>
+        )}
       </div>
     );
-  }
+  };
 
   return (
-    <div className="min-h-screen flex">
-      {/* Sidebar */}
-      <div className="fixed inset-y-0 z-50 flex w-64 flex-col bg-background border-r">
-        <div className="px-3 py-4 flex flex-col h-full">
-          {/* Logo & Admin title */}
-          <div className="px-3 py-2">
-            <Link to="/admin" className="flex items-center">
-              <span className="font-serif text-xl">ChezFlora</span>
-              <span className="ml-2 rounded bg-primary px-1.5 py-0.5 text-[0.6rem] font-medium text-primary-foreground">
-                ADMIN
-              </span>
-            </Link>
+    <div className="flex min-h-screen">
+      {/* Desktop Sidebar */}
+      <aside className="hidden lg:flex lg:flex-col w-64 border-r bg-card">
+        <div className="p-4 border-b bg-card">
+          <div className="flex items-center">
+            <span className="text-xl font-bold">Chez FLORA Panel</span>
           </div>
-          
-          <div className="mt-8 flex-1">
-            <nav className="flex flex-col gap-1">
-              {navItems.map((item) => (
-                <Link
-                  key={item.href}
-                  to={item.href}
-                  className={cn(
-                    "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted",
-                    location.pathname === item.href && "bg-muted font-medium"
-                  )}
-                >
-                  {item.icon}
-                  {item.title}
-                </Link>
-              ))}
-            </nav>
-          </div>
-          
-          {/* User info and logout */}
-          <div className="mt-auto">
-            <Separator className="my-4" />
-            <div className="flex flex-col gap-4 px-3 py-2">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-                  {userData?.firstName?.charAt(0) || 'A'}
-                </div>
-                <div>
-                  <p className="text-sm font-medium">{userData?.firstName || 'Admin'} {userData?.lastName || ''}</p>
-                  <p className="text-xs text-muted-foreground">{userData?.email || 'admin@admin.com'}</p>
-                </div>
-              </div>
+        </div>
+        
+        <ScrollArea className="flex-1 py-4">
+          <nav className="px-2 space-y-2">
+            {menuItems.map(renderMenuItem)}
+          </nav>
+        </ScrollArea>
+        
+        <div className="p-4 border-t mt-auto">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-3">
+              <Avatar>
+                <AvatarFallback>AD</AvatarFallback>
+              </Avatar>
               <div>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="w-full justify-start text-destructive hover:bg-destructive/10 hover:text-destructive"
-                  onClick={handleLogout}
-                >
-                  <LogOut size={16} className="mr-2" />
-                  Déconnexion
+                <p className="text-sm font-medium">Admin User</p>
+                <p className="text-xs text-muted-foreground">admin@admin.com</p>
+              </div>
+            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <ChevronDown className="h-4 w-4" />
                 </Button>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="w-full justify-start mt-1"
-                  asChild
-                >
-                  <Link to="/">
-                    <Package size={16} className="mr-2" />
-                    Voir la boutique
-                  </Link>
-                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Mon compte</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => navigate('/')}>
+                  <Home className="mr-2 h-4 w-4" />
+                  <span>Voir le site</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate('/account/profile')}>
+                  <Settings className="mr-2 h-4 w-4" />
+                  <span>Paramètres</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="text-red-500" onClick={handleLogout}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Déconnexion</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+      </aside>
+      
+      {/* Mobile Sidebar */}
+      <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+        <SheetContent side="left" className="w-64 p-0">
+          <div className="p-4 border-b bg-card">
+            <div className="flex items-center justify-between">
+              <span className="text-xl font-bold">Admin Panel</span>
+              <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(false)}>
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+          </div>
+          
+          <ScrollArea className="flex-1 py-4 h-[calc(100vh-136px)]">
+            <nav className="px-2 space-y-2">
+              {menuItems.map(renderMenuItem)}
+            </nav>
+          </ScrollArea>
+          
+          <div className="p-4 border-t mt-auto">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <Avatar>
+                  <AvatarFallback>AD</AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="text-sm font-medium">Admin User</p>
+                  <p className="text-xs text-muted-foreground">admin@admin.com</p>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </div>
+        </SheetContent>
+      </Sheet>
       
-      {/* Main content */}
-      <div className="pl-64 w-full">
-        <div className="container max-w-7xl mx-auto p-8">
+      {/* Main Content */}
+      <main className="flex-1 flex flex-col min-h-screen overflow-auto">
+        {/* Top Navigation */}
+        <header className="sticky top-0 z-10 bg-background border-b py-2 px-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button variant="outline" size="icon" className="lg:hidden">
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                </SheetTrigger>
+              </Sheet>
+              <h1 className="text-lg font-medium">{activeMenu}</h1>
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => navigate('/')}
+                className="hidden sm:flex items-center gap-1"
+              >
+                <Home className="h-4 w-4 mr-1" />
+                Voir le site
+              </Button>
+              <Button variant="ghost" size="sm" onClick={handleLogout}>
+                <LogOut className="h-4 w-4 mr-1" />
+                <span className="hidden sm:inline">Déconnexion</span>
+              </Button>
+            </div>
+          </div>
+        </header>
+        
+        {/* Page Content */}
+        <div className="flex-1 p-6">
           <Outlet />
         </div>
-      </div>
+      </main>
     </div>
   );
 };

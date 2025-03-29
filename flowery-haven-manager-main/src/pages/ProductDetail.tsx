@@ -1,17 +1,53 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { getProductById, getPopularProducts, getProductsByCategory } from '@/lib/data';
+import { getProductById, getPopularProducts, getProductsByCategory, getAllCategories } from '@/lib/data';
 import { addToRecentlyViewed, getRecentlyViewed } from '@/lib/recentlyViewed';
 import { addToWishlist, removeFromWishlist, isInWishlist } from '@/lib/wishlist';
 import { addToCart } from '@/lib/cart';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import ProductCard from '@/components/shared/ProductCard';
-import { Minus, Plus, ShoppingBag, Heart, Share2, ArrowLeft, CheckCircle, XCircle, Facebook, Twitter, Linkedin, Copy } from 'lucide-react';
+import Breadcrumbs from '@/components/catalog/Breadcrumbs';
+import { 
+  Minus, 
+  Plus, 
+  ShoppingBag, 
+  Heart, 
+  Share2, 
+  ArrowLeft, 
+  CheckCircle, 
+  XCircle, 
+  Facebook, 
+  Twitter, 
+  Linkedin, 
+  Copy,
+  Info,
+  Truck,
+  Package,
+  ShieldCheck,
+  Clock
+} from 'lucide-react';
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { 
+  Tabs, 
+  TabsContent, 
+  TabsList, 
+  TabsTrigger 
+} from "@/components/ui/tabs";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 // Mock color options for demonstration
 const COLORS = [
@@ -22,10 +58,11 @@ const COLORS = [
   { name: 'Bleu', value: '#3B82F6' },
 ];
 
-const ProductDetail =  () => {
+const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const product = id ? getProductById(id) : undefined;
+  const categories = getAllCategories();
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
   const [inWishlist, setInWishlist] = useState(false);
@@ -35,6 +72,11 @@ const ProductDetail =  () => {
   const [relatedProducts, setRelatedProducts] = useState<any[]>([]);
   
   const isInStock = product?.stock === undefined || (product?.stock || 0) > 0;
+  
+  // Get the category name
+  const categoryName = product ? 
+    categories.find(cat => cat.id === product.category)?.name || product.category : 
+    '';
   
   useEffect(() => {
     // Reset scroll position when navigating to a new product
@@ -67,7 +109,7 @@ const ProductDetail =  () => {
       <>
         <Navbar />
         <main className="pt-32 pb-16 min-h-screen">
-          <div className="section-container text-center">
+          <div className="container max-w-7xl mx-auto px-4 lg:px-8 text-center">
             <h1 className="text-2xl font-serif mb-4">Produit non trouvé</h1>
             <p className="mb-8">Le produit que vous recherchez n'existe pas ou a été retiré.</p>
             <Link to="/catalog" className="btn-primary inline-flex">
@@ -80,13 +122,13 @@ const ProductDetail =  () => {
     );
   }
   
-  const decreaseQuantity =  () => {
+  const decreaseQuantity = () => {
     if (quantity > 1) {
       setQuantity(quantity - 1);
     }
   };
   
-  const increaseQuantity =  () => {
+  const increaseQuantity = () => {
     // Limit quantity to stock level if stock is defined
     if (product.stock !== undefined && quantity < product.stock) {
       setQuantity(quantity + 1);
@@ -100,7 +142,7 @@ const ProductDetail =  () => {
     }
   };
   
-  const addProductToCart =  () => {
+  const addProductToCart = () => {
     if (product && isInStock) {
       addToCart(product, quantity);
       toast.success("Ajouté au panier", {
@@ -118,7 +160,7 @@ const ProductDetail =  () => {
     }
   };
   
-  const toggleWishlist =  () => {
+  const toggleWishlist = () => {
     if (inWishlist) {
       removeFromWishlist(product.id);
       setInWishlist(false);
@@ -141,7 +183,7 @@ const ProductDetail =  () => {
     }
   };
   
-  const shareProduct =  () => {
+  const shareProduct = () => {
     navigator.clipboard.writeText(window.location.href);
     setIsLinkCopied(true);
     toast.success("Lien copié !", {
@@ -175,28 +217,45 @@ const ProductDetail =  () => {
     window.open(shareUrl, '_blank', 'width=600,height=400');
   };
   
+  // Generate breadcrumbs
+  const breadcrumbItems = [
+    { label: 'Catalogue', path: '/catalog' },
+    { label: categoryName, path: `/catalog?category=${product.category}` },
+    { label: product.name }
+  ];
+  
   return (
     <>
       <Navbar />
       <main className="pt-32 pb-16">
-        <div className="section-container">
-          {/* Back button */}
-          <button 
-            onClick={() => navigate(-1)}
-            className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-6"
-          >
-            <ArrowLeft size={16} /> Retour
-          </button>
+        <div className="container max-w-7xl mx-auto px-4 lg:px-8">
+          {/* Breadcrumbs */}
+          <Breadcrumbs items={breadcrumbItems} className="mb-6" />
           
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
             {/* Product Images */}
             <div className="space-y-4">
-              <div className="aspect-square overflow-hidden rounded-lg bg-muted">
+              <div 
+                className={`aspect-square overflow-hidden rounded-lg bg-muted relative ${
+                  !isInStock ? 'after:absolute after:inset-0 after:bg-black/5' : ''
+                }`}
+              >
                 <img 
                   src={product.images[selectedImage]} 
                   alt={product.name}
-                  className={`w-full h-full object-cover animate-fade-in ${!isInStock ? 'opacity-70' : ''}`}
+                  className="w-full h-full object-cover animate-fade-in"
                 />
+                
+                {/* Out of stock overlay */}
+                {!isInStock && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="bg-black/70 text-white px-4 py-2 rounded-full text-sm font-medium">
+                      En rupture de stock
+                    </div>
+                  </div>
+                )}
+                
+                {/* Sale badge or other indicators can go here */}
               </div>
               
               {product.images.length > 1 && (
@@ -211,7 +270,7 @@ const ProductDetail =  () => {
                     >
                       <img 
                         src={image} 
-                        alt={`${product.name} - view ${index + 1}`}
+                        alt={`${product.name} - vue ${index + 1}`}
                         className="w-full h-full object-cover"
                       />
                     </button>
@@ -224,7 +283,15 @@ const ProductDetail =  () => {
             <div className="space-y-8">
               <div>
                 <div className="flex justify-between items-start">
-                  <h1 className="text-3xl lg:text-4xl font-serif font-medium mb-2">{product.name}</h1>
+                  <div>
+                    <Link 
+                      to={`/catalog?category=${product.category}`}
+                      className="inline-block text-sm text-primary hover:underline mb-2"
+                    >
+                      {categoryName}
+                    </Link>
+                    <h1 className="text-3xl lg:text-4xl font-serif font-medium mb-2">{product.name}</h1>
+                  </div>
                   
                   {/* Stock indicator */}
                   {product.stock !== undefined && (
@@ -243,7 +310,13 @@ const ProductDetail =  () => {
                     </div>
                   )}
                 </div>
-                <p className="text-2xl text-primary font-medium">{product.price.toFixed(2)} €</p>
+                
+                {/* Short description */}
+                {product.shortDescription && (
+                  <p className="text-muted-foreground mb-4">{product.shortDescription}</p>
+                )}
+                
+                <p className="text-2xl text-primary font-medium">{product.price.toFixed(2)} XAF</p>
                 
                 {/* SKU */}
                 {product.sku && (
@@ -251,11 +324,6 @@ const ProductDetail =  () => {
                     SKU: <span className="font-medium">{product.sku}</span>
                   </p>
                 )}
-              </div>
-              
-              <div>
-                <h3 className="font-medium mb-2">Description</h3>
-                <p className="text-muted-foreground">{product.description}</p>
               </div>
               
               {/* Color selector */}
@@ -283,36 +351,13 @@ const ProductDetail =  () => {
                 </p>
               </div>
               
-              {/* Product details if available */}
-              {(product.weight || product.dimensions) && (
-                <div>
-                  <h3 className="font-medium mb-2">Détails du produit</h3>
-                  <ul className="space-y-1 text-sm">
-                    {product.weight && (
-                      <li className="flex justify-between">
-                        <span className="text-muted-foreground">Poids:</span>
-                        <span>{product.weight} kg</span>
-                      </li>
-                    )}
-                    {product.dimensions && (
-                      <li className="flex justify-between">
-                        <span className="text-muted-foreground">Dimensions:</span>
-                        <span>
-                          {product.dimensions.length} × {product.dimensions.width} × {product.dimensions.height} cm
-                        </span>
-                      </li>
-                    )}
-                  </ul>
-                </div>
-              )}
-              
               <div className="pt-4">
                 <h3 className="font-medium mb-4">Quantité</h3>
                 <div className="flex items-center">
                   <button 
                     className="border border-border rounded-l-md p-3 hover:bg-muted transition-colors"
                     onClick={decreaseQuantity}
-                    disabled={quantity <= 1}
+                    disabled={quantity <= 1 || !isInStock}
                   >
                     <Minus size={16} />
                   </button>
@@ -322,7 +367,7 @@ const ProductDetail =  () => {
                   <button 
                     className="border border-border rounded-r-md p-3 hover:bg-muted transition-colors"
                     onClick={increaseQuantity}
-                    disabled={product.stock !== undefined && quantity >= product.stock}
+                    disabled={!isInStock || (product.stock !== undefined && quantity >= product.stock)}
                   >
                     <Plus size={16} />
                   </button>
@@ -347,11 +392,43 @@ const ProductDetail =  () => {
                   <ShoppingBag size={18} /> Ajouter au panier
                 </button>
                 <button 
-                  className={`btn-ghost flex items-center justify-center gap-2 ${inWishlist ? 'border-primary text-primary' : ''}`}
+                  className={`btn-outline flex items-center justify-center gap-2 ${inWishlist ? 'border-primary text-primary' : ''}`}
                   onClick={toggleWishlist}
                 >
                   <Heart size={18} fill={inWishlist ? 'currentColor' : 'none'} /> Favoris
                 </button>
+              </div>
+              
+              {/* Shipping info */}
+              <div className="bg-muted/30 rounded-lg p-4 grid grid-cols-2 gap-4">
+                <div className="flex items-start space-x-2">
+                  <Truck className="h-5 w-5 text-muted-foreground mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium">Livraison gratuite</p>
+                    <p className="text-xs text-muted-foreground">À partir de 50XAF d'achat</p>
+                  </div>
+                </div>
+                <div className="flex items-start space-x-2">
+                  <Package className="h-5 w-5 text-muted-foreground mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium">Retours faciles</p>
+                    <p className="text-xs text-muted-foreground">14 jours pour changer d'avis</p>
+                  </div>
+                </div>
+                <div className="flex items-start space-x-2">
+                  <ShieldCheck className="h-5 w-5 text-muted-foreground mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium">Garantie fraîcheur</p>
+                    <p className="text-xs text-muted-foreground">Satisfaction garantie</p>
+                  </div>
+                </div>
+                <div className="flex items-start space-x-2">
+                  <Clock className="h-5 w-5 text-muted-foreground mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium">Livraison rapide</p>
+                    <p className="text-xs text-muted-foreground">24-48h selon votre zone</p>
+                  </div>
+                </div>
               </div>
               
               <Separator className="my-4" />
@@ -399,6 +476,155 @@ const ProductDetail =  () => {
                 </div>
               </div>
             </div>
+          </div>
+          
+          {/* Product Details Tabs */}
+          <div className="mt-16">
+            <Tabs defaultValue="description" className="w-full">
+              <TabsList className="grid w-full grid-cols-3 mb-8">
+                <TabsTrigger value="description">Description</TabsTrigger>
+                <TabsTrigger value="details">Détails</TabsTrigger>
+                <TabsTrigger value="shipping">Livraison</TabsTrigger>
+              </TabsList>
+              <TabsContent value="description" className="bg-white p-6 rounded-lg border">
+                <div className="prose max-w-none">
+                  <p>{product.description}</p>
+                </div>
+              </TabsContent>
+              <TabsContent value="details" className="bg-white p-6 rounded-lg border">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div>
+                    <h3 className="text-lg font-medium mb-4">Caractéristiques</h3>
+                    <table className="w-full">
+                      <tbody>
+                        {product.sku && (
+                          <tr className="border-b">
+                            <td className="py-3 text-muted-foreground">Référence (SKU)</td>
+                            <td className="py-3 font-medium">{product.sku}</td>
+                          </tr>
+                        )}
+                        <tr className="border-b">
+                          <td className="py-3 text-muted-foreground">Catégorie</td>
+                          <td className="py-3 font-medium">{categoryName}</td>
+                        </tr>
+                        {product.weight && (
+                          <tr className="border-b">
+                            <td className="py-3 text-muted-foreground">Poids</td>
+                            <td className="py-3 font-medium">{product.weight} kg</td>
+                          </tr>
+                        )}
+                        {product.dimensions && (
+                          <tr className="border-b">
+                            <td className="py-3 text-muted-foreground">Dimensions</td>
+                            <td className="py-3 font-medium">
+                              {product.dimensions.length} × {product.dimensions.width} × {product.dimensions.height} cm
+                            </td>
+                          </tr>
+                        )}
+                        <tr className="border-b">
+                          <td className="py-3 text-muted-foreground">Disponibilité</td>
+                          <td className="py-3 font-medium">
+                            {isInStock ? 'En stock' : 'Rupture de stock'}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  
+                  <div>
+                    <h3 className="text-lg font-medium mb-4">Soins & Entretien</h3>
+                    <Accordion type="single" collapsible className="w-full">
+                      <AccordionItem value="item-1">
+                        <AccordionTrigger>Comment prolonger la vie de vos fleurs</AccordionTrigger>
+                        <AccordionContent>
+                          <p className="text-muted-foreground mb-2">Pour maximiser la durée de vie de vos fleurs, suivez ces conseils simples :</p>
+                          <ul className="list-disc pl-4 space-y-1 text-muted-foreground">
+                            <li>Changez l'eau tous les 2-3 jours</li>
+                            <li>Coupez les tiges en biseau tous les 2-3 jours</li>
+                            <li>Gardez les fleurs à l'écart de la lumière directe du soleil</li>
+                            <li>Évitez de placer les fleurs près des fruits (l'éthylène accélère leur flétrissement)</li>
+                            <li>Utilisez le sachet de conservateur fourni avec le bouquet</li>
+                          </ul>
+                        </AccordionContent>
+                      </AccordionItem>
+                      
+                      <AccordionItem value="item-2">
+                        <AccordionTrigger>Allergies et précautions</AccordionTrigger>
+                        <AccordionContent>
+                          <p className="text-muted-foreground">
+                            Certaines fleurs peuvent provoquer des réactions allergiques chez les personnes sensibles. Si vous ou vos proches avez des antécédents d'allergies, prenez en compte ces précautions. Gardez également les fleurs hors de portée des enfants et des animaux domestiques, car certaines espèces peuvent être toxiques si elles sont ingérées.
+                          </p>
+                        </AccordionContent>
+                      </AccordionItem>
+                      
+                      <AccordionItem value="item-3">
+                        <AccordionTrigger>Soins spécifiques par saison</AccordionTrigger>
+                        <AccordionContent>
+                          <p className="text-muted-foreground">
+                            En été, les fleurs peuvent se déshydrater plus rapidement. Gardez-les dans un endroit frais et loin des climatiseurs directs. En hiver, évitez de les placer près des radiateurs ou sources de chaleur. L'humidité ambiante étant généralement plus basse en hiver, pensez à vaporiser légèrement vos fleurs pour maintenir leur fraîcheur.
+                          </p>
+                        </AccordionContent>
+                      </AccordionItem>
+                    </Accordion>
+                  </div>
+                </div>
+              </TabsContent>
+              <TabsContent value="shipping" className="bg-white p-6 rounded-lg border">
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-lg font-medium mb-2">Options de livraison</h3>
+                    <p className="text-muted-foreground mb-4">
+                      Nous proposons plusieurs options de livraison pour répondre à vos besoins. 
+                      Toutes nos livraisons sont effectuées avec soin pour garantir la fraîcheur de nos produits.
+                    </p>
+                    
+                    <table className="w-full border-collapse mb-6">
+                      <thead className="bg-muted">
+                        <tr>
+                          <th className="border p-3 text-left">Type de livraison</th>
+                          <th className="border p-3 text-left">Délai</th>
+                          <th className="border p-3 text-left">Tarif</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td className="border p-3">Standard</td>
+                          <td className="border p-3">2-3 jours ouvrés</td>
+                          <td className="border p-3">5,90 XAF</td>
+                        </tr>
+                        <tr>
+                          <td className="border p-3">Express</td>
+                          <td className="border p-3">24h (commande avant 14h)</td>
+                          <td className="border p-3">9,90 XAF</td>
+                        </tr>
+                        <tr>
+                          <td className="border p-3">Premium</td>
+                          <td className="border p-3">Créneau 2h à choisir</td>
+                          <td className="border p-3">14,90 XAF</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                    
+                    <p className="text-sm text-muted-foreground">
+                      Livraison gratuite dès 50XAF d'achat (Livraison Standard uniquement).
+                    </p>
+                  </div>
+                  
+                  <div>
+                    <h3 className="text-lg font-medium mb-2">Politique de retour</h3>
+                    <p className="text-muted-foreground mb-2">
+                      Nous offrons une garantie fraîcheur de 7 jours sur tous nos produits floraux. 
+                      Si vous n'êtes pas satisfait de la qualité de nos fleurs à leur arrivée, 
+                      veuillez nous contacter dans les 24 heures avec des photos.
+                    </p>
+                    <p className="text-muted-foreground">
+                      Pour les articles non floraux, vous disposez d'un délai de 14 jours pour retourner les produits non utilisés 
+                      dans leur emballage d'origine.
+                    </p>
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
           </div>
           
           {/* Related Products */}

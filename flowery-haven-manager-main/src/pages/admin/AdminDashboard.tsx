@@ -127,7 +127,7 @@ const AdminDashboard =  () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <KpiCard 
               title="Ventes totales" 
-              value={`${totalRevenue.toFixed(2)} €`} 
+              value={`${totalRevenue.toFixed(2)} XAF`} 
               icon={<CreditCard className="h-5 w-5 text-muted-foreground" />}
               change="12.5%"
               changeType="increase"
@@ -203,7 +203,7 @@ const AdminDashboard =  () => {
                             {order.status}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-right">{order.amount.toFixed(2)} €</TableCell>
+                        <TableCell className="text-right">{order.amount.toFixed(2)} XAF</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -224,10 +224,10 @@ const AdminDashboard =  () => {
               {/* Charts Row */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <StatisticsWidget 
-                  title="Ventes mensuelles (€)" 
+                  title="Ventes mensuelles (XAF)" 
                   data={monthlySales} 
                   color="#22c55e"
-                  valuePrefix="€"
+                  valuePrefix="XAF"
                   chartType="line"
                 />
                 <StatisticsWidget 
@@ -286,7 +286,7 @@ const AdminDashboard =  () => {
                         <td className="px-4 py-2 whitespace-nowrap text-sm font-medium">{order.id}</td>
                         <td className="px-4 py-2 whitespace-nowrap text-sm">{order.customer}</td>
                         <td className="px-4 py-2 whitespace-nowrap text-sm">{order.date}</td>
-                        <td className="px-4 py-2 whitespace-nowrap text-sm">{order.amount.toFixed(2)} €</td>
+                        <td className="px-4 py-2 whitespace-nowrap text-sm">{order.amount.toFixed(2)} XAF</td>
                         <td className="px-4 py-2 whitespace-nowrap text-sm">
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                             order.status === 'Livré' ? 'bg-green-100 text-green-700 border-green-300' :
@@ -312,7 +312,7 @@ const AdminDashboard =  () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
             <KpiCard 
               title="Ventes aujourd'hui" 
-              value="475.25 €" 
+              value="475.25 XAF" 
               icon={<TrendingUp className="h-5 w-5 text-muted-foreground" />}
               change="12.5%"
               changeType="increase"
@@ -344,7 +344,7 @@ const AdminDashboard =  () => {
                   title="" 
                   data={monthlySales} 
                   color="#22c55e"
-                  valuePrefix="€"
+                  valuePrefix="XAF"
                   chartType="line"
                 />
               </div>
@@ -378,24 +378,24 @@ const AdminDashboard =  () => {
                     </tr>
                   </thead>
                   <tbody className="bg-card divide-y divide-border">
-                    <tr>
+                    {/* <tr>
                       <td className="px-4 py-2 whitespace-nowrap text-sm font-medium">Bouquet Élégance Rose</td>
                       <td className="px-4 py-2 whitespace-nowrap text-sm">Bouquets</td>
-                      <td className="px-4 py-2 whitespace-nowrap text-sm">59.99 €</td>
+                      <td className="px-4 py-2 whitespace-nowrap text-sm">59.99 XAF</td>
                       <td className="px-4 py-2 whitespace-nowrap text-sm">24</td>
                     </tr>
                     <tr>
                       <td className="px-4 py-2 whitespace-nowrap text-sm font-medium">Harmonie Printanière</td>
                       <td className="px-4 py-2 whitespace-nowrap text-sm">Bouquets</td>
-                      <td className="px-4 py-2 whitespace-nowrap text-sm">49.99 €</td>
+                      <td className="px-4 py-2 whitespace-nowrap text-sm">49.99 XAF</td>
                       <td className="px-4 py-2 whitespace-nowrap text-sm">18</td>
                     </tr>
                     <tr>
                       <td className="px-4 py-2 whitespace-nowrap text-sm font-medium">Orchidée Zen</td>
                       <td className="px-4 py-2 whitespace-nowrap text-sm">Plantes</td>
-                      <td className="px-4 py-2 whitespace-nowrap text-sm">69.99 €</td>
+                      <td className="px-4 py-2 whitespace-nowrap text-sm">69.99 XAF</td>
                       <td className="px-4 py-2 whitespace-nowrap text-sm">15</td>
-                    </tr>
+                    </tr> */}
                   </tbody>
                 </table>
               </div>

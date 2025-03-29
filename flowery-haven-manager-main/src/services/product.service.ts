@@ -12,19 +12,27 @@ export interface Product {
     category: string;
     popular: boolean;
     featured: boolean;
+    shortDescription?: string;
     sku?: string;
     weight?: number;
     dimensions?: {
-        length: number;
-        width: number;
-        height: number;
+        length?: number;
+        width?: number;
+        height?: number;
     };
+    metaTitle?: string;
+    metaDescription?: string;
+    createdAt?: string;
+    updatedAt?: string;
 }
 
 export interface Category {
     id: string;
     name: string;
     description: string;
+    image?: string;
+    parentId?: string;
+    order?: number;
 }
 
 // Récupérer tous les produits
@@ -67,12 +75,24 @@ const getPopularProducts = async (): Promise<Product[]> => {
     }
 };
 
+// Récupérer les produits en vedette
+const getFeaturedProducts = async (): Promise<Product[]> => {
+    try {
+        return await dbService.getByIndex<Product>("products", "featured", true);
+    } catch (error) {
+        console.error("Error in getFeaturedProducts:", error);
+        return [];
+    }
+};
+
 // Ajouter un produit
 const addProduct = async (product: Omit<Product, 'id'>): Promise<Product> => {
     try {
         const newProduct: Product = {
             ...product,
-            id: `prod_${Date.now()}`
+            id: `prod_${Date.now()}`,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
         };
 
         await dbService.addItem("products", newProduct);
@@ -86,8 +106,12 @@ const addProduct = async (product: Omit<Product, 'id'>): Promise<Product> => {
 // Mettre à jour un produit
 const updateProduct = async (product: Product): Promise<Product> => {
     try {
-        await dbService.updateItem("products", product);
-        return product;
+        const updatedProduct = {
+            ...product,
+            updatedAt: new Date().toISOString()
+        };
+        await dbService.updateItem("products", updatedProduct);
+        return updatedProduct;
     } catch (error) {
         console.error(`Error in updateProduct for ID ${product.id}:`, error);
         throw error;
@@ -114,13 +138,65 @@ const getAllCategories = async (): Promise<Category[]> => {
     }
 };
 
+// Récupérer une catégorie par son ID
+const getCategoryById = async (id: string): Promise<Category | null> => {
+    try {
+        return await dbService.getItemById<Category>("categories", id);
+    } catch (error) {
+        console.error(`Error in getCategoryById for ID ${id}:`, error);
+        return null;
+    }
+};
+
+// Ajouter une catégorie
+const addCategory = async (category: Omit<Category, 'id'>): Promise<Category> => {
+    try {
+        const newCategory: Category = {
+            ...category,
+            id: category.id || `cat_${Date.now()}`
+        };
+
+        await dbService.addItem("categories", newCategory);
+        return newCategory;
+    } catch (error) {
+        console.error("Error in addCategory:", error);
+        throw error;
+    }
+};
+
+// Mettre à jour une catégorie
+const updateCategory = async (category: Category): Promise<Category> => {
+    try {
+        await dbService.updateItem("categories", category);
+        return category;
+    } catch (error) {
+        console.error(`Error in updateCategory for ID ${category.id}:`, error);
+        throw error;
+    }
+};
+
+// Supprimer une catégorie
+const deleteCategory = async (id: string): Promise<boolean> => {
+    try {
+        return await dbService.deleteItem("categories", id);
+    } catch (error) {
+        console.error(`Error in deleteCategory for ID ${id}:`, error);
+        throw error;
+    }
+};
+
 export const productService = {
     getAllProducts,
     getProductById,
     getProductsByCategory,
     getPopularProducts,
+    getFeaturedProducts,
     addProduct,
     updateProduct,
     deleteProduct,
-    getAllCategories
+    getAllCategories,
+    getCategoryById,
+    addCategory,
+    updateCategory,
+    deleteCategory
 };

@@ -1,44 +1,76 @@
-
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
-import { getCart, updateCartItemQuantity, removeFromCart, getCartTotal } from '@/lib/cart';
+import { cartService, CartItem } from '@/services/cart.service';
 import { Minus, Plus, X, ShoppingBag } from 'lucide-react';
 import { toast } from "sonner";
 
-const Cart =  () => {
-  const [cartItems, setCartItems] = useState<any[]>([]);
+const Cart = () => {
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [totalAmount, setTotalAmount] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  // Charger le panier
+  const loadCart = async () => {
+    setIsLoading(true);
+    try {
+      const items = await cartService.getCart();
+      setCartItems(items);
+      
+      const total = await cartService.getCartTotal();
+      setTotalAmount(total);
+    } catch (error) {
+      console.error('Error loading cart:', error);
+      toast.error('Erreur lors du chargement du panier');
+    } finally {
+      setIsLoading(false);
+    }
+  };
   
   useEffect(() => {
-    const loadCart =  () => {
-      const items = getCart();
-      setCartItems(items);
-      setTotalAmount(getCartTotal());
+    loadCart();
+    
+    // Écouter les mises à jour du panier
+    const handleCartUpdate = () => {
+      loadCart();
     };
     
-    loadCart();
+    window.addEventListener('cartUpdated', handleCartUpdate);
+    
+    return () => {
+      window.removeEventListener('cartUpdated', handleCartUpdate);
+    };
   }, []);
   
-  const handleQuantityChange = (id: string, newQuantity: number) => {
-    updateCartItemQuantity(id, newQuantity);
-    setCartItems(getCart());
-    setTotalAmount(getCartTotal());
+  // Gérer le changement de quantité
+  const handleQuantityChange = async (id: string, newQuantity: number) => {
+    try {
+      await cartService.updateCartItemQuantity(id, newQuantity);
+      // Le panier sera rechargé via l'événement 'cartUpdated'
+    } catch (error) {
+      console.error('Error updating cart item quantity:', error);
+      toast.error('Erreur lors de la modification de la quantité');
+    }
   };
   
-  const handleRemoveItem = (id: string) => {
-    removeFromCart(id);
-    setCartItems(getCart());
-    setTotalAmount(getCartTotal());
-    toast.info("Produit retiré", {
-      description: "Le produit a été retiré de votre panier",
-      duration: 3000,
-    });
+  // Supprimer un article du panier
+  const handleRemoveItem = async (id: string) => {
+    try {
+      await cartService.removeFromCart(id);
+      // Le panier sera rechargé via l'événement 'cartUpdated'
+      toast.info("Produit retiré", {
+        description: "Le produit a été retiré de votre panier",
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error('Error removing item from cart:', error);
+      toast.error('Erreur lors de la suppression du produit');
+    }
   };
   
-  const proceedToCheckout =  () => {
-    // This would normally navigate to a checkout page
+  // Simuler le passage au paiement
+  const proceedToCheckout = () => {
     toast.success("Simulation de commande", {
       description: "Dans une version complète, cette action vous dirigerait vers le processus de paiement.",
       duration: 5000,
@@ -52,7 +84,11 @@ const Cart =  () => {
         <div className="section-container">
           <h1 className="text-3xl font-serif mb-8">Votre Panier</h1>
           
-          {cartItems.length === 0 ? (
+          {isLoading ? (
+            <div className="flex justify-center py-12">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
+            </div>
+          ) : cartItems.length === 0 ? (
             <div className="text-center py-12">
               <div className="inline-flex justify-center items-center p-6 bg-muted rounded-full mb-6">
                 <ShoppingBag size={32} className="text-muted-foreground" />
@@ -82,14 +118,14 @@ const Cart =  () => {
                         <tr key={item.id} className="border-t border-border">
                           <td className="py-4 px-6">
                             <div className="flex items-center gap-3">
-                              <Link to={`/product/${item.id}`} className="w-20 h-20 rounded-md overflow-hidden bg-muted">
+                              <Link to={`/product/${item.productId}`} className="w-20 h-20 rounded-md overflow-hidden bg-muted">
                                 <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
                               </Link>
                               <div>
-                                <Link to={`/product/${item.id}`} className="font-medium hover:text-primary transition-colors">
+                                <Link to={`/product/${item.productId}`} className="font-medium hover:text-primary transition-colors">
                                   {item.name}
                                 </Link>
-                                <p className="text-muted-foreground text-sm mt-1">{item.price.toFixed(2)} € / unité</p>
+                                <p className="text-muted-foreground text-sm mt-1">{item.price.toFixed(2)} XAF / unité</p>
                               </div>
                             </div>
                           </td>
@@ -113,7 +149,7 @@ const Cart =  () => {
                             </div>
                           </td>
                           <td className="py-4 px-6 text-right font-medium">
-                            {(item.price * item.quantity).toFixed(2)} €
+                            {(item.price && item.quantity ? (item.price * item.quantity).toFixed(2) : '0.00')} XAF
                           </td>
                           <td className="py-4 px-6 text-right">
                             <button 
@@ -138,22 +174,23 @@ const Cart =  () => {
                   <div className="space-y-4 border-b border-border pb-6 mb-6">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Sous-total</span>
-                      <span className="font-medium">{totalAmount.toFixed(2)} €</span>
+                      <span className="font-medium">{totalAmount.toFixed(2)} XAF</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Livraison</span>
-                      <span className="font-medium">7.90 €</span>
+                      <span className="font-medium">7.90 XAF</span>
                     </div>
                   </div>
                   
                   <div className="flex justify-between mb-8">
                     <span className="text-lg">Total</span>
-                    <span className="text-lg font-medium">{(totalAmount + 7.9).toFixed(2)} €</span>
+                    <span className="text-lg font-medium">{(totalAmount + 7.9).toFixed(2)} XAF</span>
                   </div>
                   
                   <button 
                     className="btn-primary w-full"
                     onClick={proceedToCheckout}
+                    disabled={cartItems.length === 0}
                   >
                     Passer au paiement
                   </button>

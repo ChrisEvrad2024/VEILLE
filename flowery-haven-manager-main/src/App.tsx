@@ -38,6 +38,10 @@ import AdminLayout from "./components/layout/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import LoginHistory from "./pages/account/LoginHistory";
 
+// Import Admin Product and Category Management
+import ProductsManagement from "./pages/admin/ProductsManagement";
+import CategoriesManagement from "./pages/admin/CategoriesManagement";
+
 const queryClient = new QueryClient();
 
 const App = () => {
@@ -84,11 +88,13 @@ const App = () => {
             </Route>
           </Route>
           
-          {/* Basic Admin Route - just the dashboard for now */}
+          {/* Admin Routes */}
           <Route element={<RequireAdmin />}>
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<AdminDashboard />} />
-              {/* Other admin routes commented out for now */}
+              {/* Admin Product and Category Management */}
+              <Route path="products" element={<ProductsManagement />} />
+              <Route path="categories" element={<CategoriesManagement />} />
             </Route>
           </Route>
           

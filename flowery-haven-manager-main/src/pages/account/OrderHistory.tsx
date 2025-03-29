@@ -23,41 +23,41 @@ import { Badge } from "@/components/ui/badge";
 
 // Sample order data (in a real app, this would come from an API)
 const sampleOrders = [
-  {
-    id: "ORD-12345",
-    date: "2024-03-15",
-    status: "delivered",
-    total: 85.90,
-    items: [
-      { id: 1, name: "Bouquet de roses rouges", price: 39.95, quantity: 1, image: "https://images.unsplash.com/photo-1559563362-c667ba5f5480?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3" },
-      { id: 2, name: "Vase en céramique", price: 45.95, quantity: 1, image: "https://images.unsplash.com/photo-1612196808214-75c49e6a8637?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3" }
-    ],
-    tracking: {
-      number: "TRK789012345",
-      carrier: "Chronopost",
-      url: "#"
-    }
-  },
-  {
-    id: "ORD-67890",
-    date: "2024-02-28",
-    status: "processing",
-    total: 65.50,
-    items: [
-      { id: 3, name: "Bouquet de tulipes", price: 35.50, quantity: 1, image: "https://images.unsplash.com/photo-1588621394303-fd4829aecb65?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3" },
-      { id: 4, name: "Carte de vœux personnalisée", price: 5.00, quantity: 2, image: "https://images.unsplash.com/photo-1607344645866-009c320b63e0?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3" },
-      { id: 5, name: "Chocolats assortis", price: 20.00, quantity: 1, image: "https://images.unsplash.com/photo-1611254655677-5ce4c5cd2dc5?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3" }
-    ]
-  },
-  {
-    id: "ORD-54321",
-    date: "2024-01-10",
-    status: "cancelled",
-    total: 29.95,
-    items: [
-      { id: 6, name: "Plante d'intérieur", price: 29.95, quantity: 1, image: "https://images.unsplash.com/photo-1463320898484-cdee8141c787?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3" }
-    ]
-  }
+  // {
+  //   id: "ORD-12345",
+  //   date: "2024-03-15",
+  //   status: "delivered",
+  //   total: 85.90,
+  //   items: [
+  //     { id: 1, name: "Bouquet de roses rouges", price: 39.95, quantity: 1, image: "https://images.unsplash.com/photo-1559563362-c667ba5f5480?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3" },
+  //     { id: 2, name: "Vase en céramique", price: 45.95, quantity: 1, image: "https://images.unsplash.com/photo-1612196808214-75c49e6a8637?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3" }
+  //   ],
+  //   tracking: {
+  //     number: "TRK789012345",
+  //     carrier: "Chronopost",
+  //     url: "#"
+  //   }
+  // },
+  // {
+  //   id: "ORD-67890",
+  //   date: "2024-02-28",
+  //   status: "processing",
+  //   total: 65.50,
+  //   items: [
+  //     { id: 3, name: "Bouquet de tulipes", price: 35.50, quantity: 1, image: "https://images.unsplash.com/photo-1588621394303-fd4829aecb65?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3" },
+  //     { id: 4, name: "Carte de vœux personnalisée", price: 5.00, quantity: 2, image: "https://images.unsplash.com/photo-1607344645866-009c320b63e0?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3" },
+  //     { id: 5, name: "Chocolats assortis", price: 20.00, quantity: 1, image: "https://images.unsplash.com/photo-1611254655677-5ce4c5cd2dc5?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3" }
+  //   ]
+  // },
+  // {
+  //   id: "ORD-54321",
+  //   date: "2024-01-10",
+  //   status: "cancelled",
+  //   total: 29.95,
+  //   items: [
+  //     { id: 6, name: "Plante d'intérieur", price: 29.95, quantity: 1, image: "https://images.unsplash.com/photo-1463320898484-cdee8141c787?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3" }
+  //   ]
+  // }
 ];
 
 // Status mapping for displaying appropriate UI
@@ -160,7 +160,7 @@ const OrderHistory =  () => {
                           </p>
                         </div>
                         <div className="text-right">
-                          <p className="font-medium">{item.price.toFixed(2)} €</p>
+                          <p className="font-medium">{item.price.toFixed(2)} XAF</p>
                         </div>
                       </div>
                     ))}
@@ -171,7 +171,7 @@ const OrderHistory =  () => {
                   {/* Order summary and actions */}
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between">
                     <div>
-                      <p className="text-sm font-semibold">Total: {order.total.toFixed(2)} €</p>
+                      <p className="text-sm font-semibold">Total: {order.total.toFixed(2)} XAF</p>
                       
                       {order.tracking && (
                         <a 

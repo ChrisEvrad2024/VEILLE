@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Product } from '@/types/product';
 import { ShoppingBag, Heart, CheckCircle, XCircle } from 'lucide-react';
-import { cartService, wishlistService } from '@/services';
+import { cartService } from '@/services/cart.service';
+import { wishlistService } from '@/services/wishlist.service';
 import { toast } from 'sonner';
 
 interface ProductCardProps {
@@ -12,12 +13,17 @@ interface ProductCardProps {
 const ProductCard = ({ product }: ProductCardProps) => {
   const [isHovered, setIsHovered] = useState(false);
   const [inWishlist, setInWishlist] = useState(false);
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
   
   // Vérifier si le produit est dans la liste de souhaits au chargement
   useEffect(() => {
     const checkWishlist = async () => {
-      const isInList = await wishlistService.isInWishlist(product.id);
-      setInWishlist(isInList);
+      try {
+        const isInList = await wishlistService.isInWishlist(product.id);
+        setInWishlist(isInList);
+      } catch (error) {
+        console.error('Error checking wishlist status:', error);
+      }
     };
     
     checkWishlist();
@@ -27,45 +33,53 @@ const ProductCard = ({ product }: ProductCardProps) => {
     e.preventDefault();
     e.stopPropagation();
     
-    await cartService.addToCart(product.id, 1);
+    setIsAddingToCart(true);
     
-    // Dispatch custom event to update cart icon
-    window.dispatchEvent(new Event('cartUpdated'));
-    
-    toast.success("Ajouté au panier", {
-      description: `${product.name} a été ajouté à votre panier.`,
-      duration: 3000,
-    });
+    try {
+      await cartService.addToCart(product.id, 1);
+      
+      toast.success("Ajouté au panier", {
+        description: `${product.name} a été ajouté à votre panier.`,
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error('Error adding product to cart:', error);
+      toast.error('Erreur lors de l\'ajout au panier');
+    } finally {
+      setIsAddingToCart(false);
+    }
   };
   
   const toggleWishlist = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
-    if (inWishlist) {
-      await wishlistService.removeFromWishlist(product.id);
-      setInWishlist(false);
-      toast.info("Retiré des favoris", {
-        description: `${product.name} a été retiré de vos favoris.`,
-        duration: 3000,
-      });
-    } else {
-      await wishlistService.addToWishlist({
-        id: product.id,
-        productId: product.id,
-        name: product.name,
-        price: product.price,
-        image: product.images[0]
-      });
-      setInWishlist(true);
-      toast.success("Ajouté aux favoris", {
-        description: `${product.name} a été ajouté à vos favoris.`,
-        duration: 3000,
-      });
+    try {
+      if (inWishlist) {
+        await wishlistService.removeFromWishlist(product.id);
+        setInWishlist(false);
+        toast.info("Retiré des favoris", {
+          description: `${product.name} a été retiré de vos favoris.`,
+          duration: 3000,
+        });
+      } else {
+        await wishlistService.addToWishlist({
+          id: `wish_${Date.now()}`,
+          productId: product.id,
+          name: product.name,
+          price: product.price,
+          image: product.images[0]
+        });
+        setInWishlist(true);
+        toast.success("Ajouté aux favoris", {
+          description: `${product.name} a été ajouté à vos favoris.`,
+          duration: 3000,
+        });
+      }
+    } catch (error) {
+      console.error('Error updating wishlist:', error);
+      toast.error('Erreur lors de la mise à jour des favoris');
     }
-    
-    // Dispatch custom event to update wishlist icon if needed
-    window.dispatchEvent(new Event('wishlistUpdated'));
   };
 
   const isInStock = product.stock === undefined || product.stock > 0;
@@ -77,11 +91,11 @@ const ProductCard = ({ product }: ProductCardProps) => {
       onMouseLeave={() => setIsHovered(false)}
     >
       <Link to={`/product/${product.id}`} className="block">
-        <div className="product-image-wrapper rounded-lg overflow-hidden relative aspect-[3/4]">
+        <div className="aspect-square rounded-lg overflow-hidden mb-4 relative">
           <img 
             src={product.images[0]} 
             alt={product.name}
-            className={`product-image w-full h-full object-cover transition-transform hover:scale-105 duration-700 ${!isInStock ? 'opacity-70' : ''}`}
+            className={`w-full h-full object-cover transition-transform duration-700 hover:scale-105 ${!isInStock ? 'opacity-70' : ''}`}
           />
           
           {/* Stock indicator */}
@@ -109,9 +123,11 @@ const ProductCard = ({ product }: ProductCardProps) => {
           >
             <button 
               onClick={quickAddToCart}
-              className={`bg-white text-primary hover:bg-primary hover:text-white transition-colors duration-300 rounded-full p-3 shadow-md transform translate-y-2 group-hover:translate-y-0 ${!isInStock ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className={`bg-white text-primary hover:bg-primary hover:text-white transition-colors duration-300 rounded-full p-3 shadow-md transform translate-y-2 group-hover:translate-y-0 ${
+                !isInStock || isAddingToCart ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
               aria-label="Ajouter au panier"
-              disabled={!isInStock}
+              disabled={!isInStock || isAddingToCart}
             >
               <ShoppingBag size={20} />
             </button>
@@ -126,9 +142,9 @@ const ProductCard = ({ product }: ProductCardProps) => {
           </div>
         </div>
         
-        <div className="mt-4 text-center">
+        <div className="text-center">
           <h3 className="font-serif text-lg font-medium">{product.name}</h3>
-          <p className="mt-1 text-primary font-medium">{product.price.toFixed(2)} €</p>
+          <p className="mt-1 text-primary font-medium">{product.price.toFixed(2)} XAF</p>
           {!isInStock && (
             <p className="text-xs text-red-500 mt-1">Rupture de stock</p>
           )}

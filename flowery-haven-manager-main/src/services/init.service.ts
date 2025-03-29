@@ -9,153 +9,153 @@ import { UserRole } from './user-management.service';
 
 // Données de démo pour les produits
 const sampleProducts: Product[] = [
-    {
-        id: 'elegance-rose-bouquet',
-        name: 'Bouquet Élégance Rose',
-        description: 'Un bouquet raffiné de roses roses et blanches, parfait pour exprimer votre amour ou votre admiration.',
-        price: 59.99,
-        stock: 15,
-        images: [
-            'https://images.unsplash.com/photo-1537530360953-3b8b369e01fe?q=80&w=2070',
-            'https://images.unsplash.com/photo-1594654281947-7114da78db59?q=80&w=1974'
-        ],
-        category: 'bouquets',
-        popular: true,
-        featured: true,
-        sku: 'BQT-ROSE-001'
-    },
-    {
-        id: 'spring-harmony',
-        name: 'Harmonie Printanière',
-        description: 'Une explosion de couleurs printanières avec un mélange de tulipes, jonquilles et renoncules.',
-        price: 49.99,
-        stock: 8,
-        images: [
-            'https://images.unsplash.com/photo-1613539246066-78db6f03a16f?q=80&w=1974',
-            'https://images.unsplash.com/photo-1546842931-886c185b4c8c?q=80&w=2085'
-        ],
-        category: 'bouquets',
-        popular: true,
-        featured: false,
-        sku: 'BQT-SPRING-002'
-    },
-    {
-        id: 'exotic-orchid-display',
-        name: 'Orchidées Exotiques',
-        description: 'Élégante composition d\'orchidées phalaenopsis dans un vase contemporain.',
-        price: 89.99,
-        stock: 5,
-        images: [
-            'https://images.unsplash.com/photo-1566401619647-d5067e7282a3?q=80&w=1974',
-            'https://images.unsplash.com/photo-1598983062026-0fd189bb62c1?q=80&w=1974'
-        ],
-        category: 'plants',
-        popular: false,
-        featured: true,
-        sku: 'PLT-ORCH-001'
-    },
-    {
-        id: 'garden-succulent-trio',
-        name: 'Trio de Succulentes',
-        description: 'Ensemble de trois succulentes variées dans des pots en céramique assortis.',
-        price: 34.99,
-        stock: 12,
-        images: [
-            'https://images.unsplash.com/photo-1459411552884-841db9b3cc2a?q=80&w=2074',
-            'https://images.unsplash.com/photo-1509423350716-97f9360b4e09?q=80&w=2075'
-        ],
-        category: 'plants',
-        popular: true,
-        featured: false,
-        sku: 'PLT-SUCC-001'
-    },
-    {
-        id: 'celebration-basket',
-        name: 'Panier Célébration',
-        description: 'Généreux panier d\'arrangements floraux variés accompagné de friandises gourmandes.',
-        price: 79.99,
-        stock: 7,
-        images: [
-            'https://images.unsplash.com/photo-1589715371209-89af43a0c015?q=80&w=2070',
-            'https://images.unsplash.com/photo-1528075135483-f3d386fb1ce8?q=80&w=1974'
-        ],
-        category: 'gift-baskets',
-        popular: false,
-        featured: true,
-        sku: 'GIFT-BSKT-001'
-    }
+    // {
+    //     id: 'elegance-rose-bouquet',
+    //     name: 'Bouquet Élégance Rose',
+    //     description: 'Un bouquet raffiné de roses roses et blanches, parfait pour exprimer votre amour ou votre admiration.',
+    //     price: 59.99,
+    //     stock: 15,
+    //     images: [
+    //         'https://images.unsplash.com/photo-1537530360953-3b8b369e01fe?q=80&w=2070',
+    //         'https://images.unsplash.com/photo-1594654281947-7114da78db59?q=80&w=1974'
+    //     ],
+    //     category: 'bouquets',
+    //     popular: true,
+    //     featured: true,
+    //     sku: 'BQT-ROSE-001'
+    // },
+    // {
+    //     id: 'spring-harmony',
+    //     name: 'Harmonie Printanière',
+    //     description: 'Une explosion de couleurs printanières avec un mélange de tulipes, jonquilles et renoncules.',
+    //     price: 49.99,
+    //     stock: 8,
+    //     images: [
+    //         'https://images.unsplash.com/photo-1613539246066-78db6f03a16f?q=80&w=1974',
+    //         'https://images.unsplash.com/photo-1546842931-886c185b4c8c?q=80&w=2085'
+    //     ],
+    //     category: 'bouquets',
+    //     popular: true,
+    //     featured: false,
+    //     sku: 'BQT-SPRING-002'
+    // },
+    // {
+    //     id: 'exotic-orchid-display',
+    //     name: 'Orchidées Exotiques',
+    //     description: 'Élégante composition d\'orchidées phalaenopsis dans un vase contemporain.',
+    //     price: 89.99,
+    //     stock: 5,
+    //     images: [
+    //         'https://images.unsplash.com/photo-1566401619647-d5067e7282a3?q=80&w=1974',
+    //         'https://images.unsplash.com/photo-1598983062026-0fd189bb62c1?q=80&w=1974'
+    //     ],
+    //     category: 'plants',
+    //     popular: false,
+    //     featured: true,
+    //     sku: 'PLT-ORCH-001'
+    // },
+    // {
+    //     id: 'garden-succulent-trio',
+    //     name: 'Trio de Succulentes',
+    //     description: 'Ensemble de trois succulentes variées dans des pots en céramique assortis.',
+    //     price: 34.99,
+    //     stock: 12,
+    //     images: [
+    //         'https://images.unsplash.com/photo-1459411552884-841db9b3cc2a?q=80&w=2074',
+    //         'https://images.unsplash.com/photo-1509423350716-97f9360b4e09?q=80&w=2075'
+    //     ],
+    //     category: 'plants',
+    //     popular: true,
+    //     featured: false,
+    //     sku: 'PLT-SUCC-001'
+    // },
+    // {
+    //     id: 'celebration-basket',
+    //     name: 'Panier Célébration',
+    //     description: 'Généreux panier d\'arrangements floraux variés accompagné de friandises gourmandes.',
+    //     price: 79.99,
+    //     stock: 7,
+    //     images: [
+    //         'https://images.unsplash.com/photo-1589715371209-89af43a0c015?q=80&w=2070',
+    //         'https://images.unsplash.com/photo-1528075135483-f3d386fb1ce8?q=80&w=1974'
+    //     ],
+    //     category: 'gift-baskets',
+    //     popular: false,
+    //     featured: true,
+    //     sku: 'GIFT-BSKT-001'
+    // }
 ];
 
 // Données de démo pour les catégories
 const sampleCategories: Category[] = [
-    {
-        id: 'fresh-flowers',
-        name: 'Fleurs Fraîches',
-        description: 'Des fleurs fraîchement coupées pour illuminer votre intérieur.'
-    },
-    {
-        id: 'bouquets',
-        name: 'Bouquets',
-        description: 'Compositions florales magnifiquement arrangées pour toutes les occasions.'
-    },
-    {
-        id: 'plants',
-        name: 'Plantes',
-        description: 'Plantes d\'intérieur et d\'extérieur pour embellir votre espace de vie.'
-    },
-    {
-        id: 'gift-baskets',
-        name: 'Paniers Cadeaux',
-        description: 'Magnifiques arrangements floraux accompagnés de gourmandises.'
-    },
-    {
-        id: 'occasions',
-        name: 'Occasions Spéciales',
-        description: 'Créations florales pour vos moments importants: mariages, anniversaires, condoléances...'
-    }
+    // {
+    //     id: 'fresh-flowers',
+    //     name: 'Fleurs Fraîches',
+    //     description: 'Des fleurs fraîchement coupées pour illuminer votre intérieur.'
+    // },
+    // {
+    //     id: 'bouquets',
+    //     name: 'Bouquets',
+    //     description: 'Compositions florales magnifiquement arrangées pour toutes les occasions.'
+    // },
+    // {
+    //     id: 'plants',
+    //     name: 'Plantes',
+    //     description: 'Plantes d\'intérieur et d\'extérieur pour embellir votre espace de vie.'
+    // },
+    // {
+    //     id: 'gift-baskets',
+    //     name: 'Paniers Cadeaux',
+    //     description: 'Magnifiques arrangements floraux accompagnés de gourmandises.'
+    // },
+    // {
+    //     id: 'occasions',
+    //     name: 'Occasions Spéciales',
+    //     description: 'Créations florales pour vos moments importants: mariages, anniversaires, condoléances...'
+    // }
 ];
 
 // Données de démo pour les articles de blog
 const sampleBlogPosts: BlogPost[] = [
-    {
-        id: 1,
-        title: "Les tendances florales de l'automne",
-        excerpt: "Découvrez les arrangements floraux qui feront sensation cette saison.",
-        content: "L'automne est une saison magique pour les compositions florales. Avec ses couleurs chaudes et ses textures riches, cette période offre une palette somptueuse pour créer des arrangements uniques. Les tons ambrés, les rouges profonds et les oranges chaleureux dominent désormais nos créations. N'hésitez pas à intégrer des éléments naturels comme des branches, des baies, ou même des petites citrouilles décoratives pour un effet saisonnier parfait. Les chrysanthèmes, dahlias et roses d'automne sont particulièrement à l'honneur cette année.",
-        date: "2023-10-15",
-        author: "Sophie Martin",
-        category: "tendances",
-        imageUrl: "https://images.unsplash.com/photo-1508610048659-a06b669e3321?q=80&w=2070&auto=format&fit=crop",
-        tags: ["automne", "tendances", "décoration"],
-        viewCount: 120,
-        featured: true
-    },
-    {
-        id: 2,
-        title: "Comment faire durer vos fleurs coupées plus longtemps",
-        excerpt: "Nos conseils d'experts pour prolonger la vie de vos bouquets.",
-        content: "Pour profiter plus longtemps de la beauté de vos fleurs coupées, quelques gestes simples peuvent faire toute la différence. Commencez par couper les tiges en biais sous l'eau courante pour éviter que l'air ne bloque l'absorption de l'eau. Retirez toutes les feuilles qui seraient immergées dans l'eau du vase pour prévenir la prolifération de bactéries. Changez l'eau tous les deux jours et ajoutez un conservateur floral ou une cuillère de sucre mélangée à quelques gouttes d'eau de Javel. Gardez vos fleurs loin des fruits, qui dégagent de l'éthylène et accélèrent leur flétrissement, ainsi que des sources de chaleur et des courants d'air.",
-        date: "2023-09-28",
-        author: "Marc Dubois",
-        category: "conseils",
-        imageUrl: "https://images.unsplash.com/photo-1484309988949-68e2ece99271?q=80&w=2070&auto=format&fit=crop",
-        tags: ["entretien", "fleurs", "astuces"],
-        viewCount: 245,
-        featured: false
-    },
-    {
-        id: 3,
-        title: "Le langage des fleurs: ce que vos bouquets racontent",
-        excerpt: "Découvrez la signification cachée derrière chaque fleur.",
-        content: "Depuis des siècles, les fleurs portent des messages symboliques. Au XIXe siècle, cette tradition s'est formalisée en un véritable langage codifié. La rose rouge évoque bien sûr la passion amoureuse, tandis que la rose blanche symbolise la pureté et l'innocence. Le lys représente la majesté et la pureté, le tournesol l'admiration et la loyauté. Les marguerites expriment l'innocence et la fidélité, alors que les orchidées sont associées à la beauté raffinée et à la sensualité. Les pivoines symbolisent la prospérité et la bonne fortune. Choisir un bouquet en connaissance de ce langage permet d'offrir bien plus que de simples fleurs : un message personnalisé et profond.",
-        date: "2023-08-15",
-        author: "Émilie Leclerc",
-        category: "culture",
-        imageUrl: "https://images.unsplash.com/photo-1526047932273-341f2a7631f9?q=80&w=2080&auto=format&fit=crop",
-        tags: ["symbolisme", "tradition", "histoire"],
-        viewCount: 187,
-        featured: true
-    }
+    // {
+    //     id: 1,
+    //     title: "Les tendances florales de l'automne",
+    //     excerpt: "Découvrez les arrangements floraux qui feront sensation cette saison.",
+    //     content: "L'automne est une saison magique pour les compositions florales. Avec ses couleurs chaudes et ses textures riches, cette période offre une palette somptueuse pour créer des arrangements uniques. Les tons ambrés, les rouges profonds et les oranges chaleureux dominent désormais nos créations. N'hésitez pas à intégrer des éléments naturels comme des branches, des baies, ou même des petites citrouilles décoratives pour un effet saisonnier parfait. Les chrysanthèmes, dahlias et roses d'automne sont particulièrement à l'honneur cette année.",
+    //     date: "2023-10-15",
+    //     author: "Sophie Martin",
+    //     category: "tendances",
+    //     imageUrl: "https://images.unsplash.com/photo-1508610048659-a06b669e3321?q=80&w=2070&auto=format&fit=crop",
+    //     tags: ["automne", "tendances", "décoration"],
+    //     viewCount: 120,
+    //     featured: true
+    // },
+    // {
+    //     id: 2,
+    //     title: "Comment faire durer vos fleurs coupées plus longtemps",
+    //     excerpt: "Nos conseils d'experts pour prolonger la vie de vos bouquets.",
+    //     content: "Pour profiter plus longtemps de la beauté de vos fleurs coupées, quelques gestes simples peuvent faire toute la différence. Commencez par couper les tiges en biais sous l'eau courante pour éviter que l'air ne bloque l'absorption de l'eau. Retirez toutes les feuilles qui seraient immergées dans l'eau du vase pour prévenir la prolifération de bactéries. Changez l'eau tous les deux jours et ajoutez un conservateur floral ou une cuillère de sucre mélangée à quelques gouttes d'eau de Javel. Gardez vos fleurs loin des fruits, qui dégagent de l'éthylène et accélèrent leur flétrissement, ainsi que des sources de chaleur et des courants d'air.",
+    //     date: "2023-09-28",
+    //     author: "Marc Dubois",
+    //     category: "conseils",
+    //     imageUrl: "https://images.unsplash.com/photo-1484309988949-68e2ece99271?q=80&w=2070&auto=format&fit=crop",
+    //     tags: ["entretien", "fleurs", "astuces"],
+    //     viewCount: 245,
+    //     featured: false
+    // },
+    // {
+    //     id: 3,
+    //     title: "Le langage des fleurs: ce que vos bouquets racontent",
+    //     excerpt: "Découvrez la signification cachée derrière chaque fleur.",
+    //     content: "Depuis des siècles, les fleurs portent des messages symboliques. Au XIXe siècle, cette tradition s'est formalisée en un véritable langage codifié. La rose rouge évoque bien sûr la passion amoureuse, tandis que la rose blanche symbolise la pureté et l'innocence. Le lys représente la majesté et la pureté, le tournesol l'admiration et la loyauté. Les marguerites expriment l'innocence et la fidélité, alors que les orchidées sont associées à la beauté raffinée et à la sensualité. Les pivoines symbolisent la prospérité et la bonne fortune. Choisir un bouquet en connaissance de ce langage permet d'offrir bien plus que de simples fleurs : un message personnalisé et profond.",
+    //     date: "2023-08-15",
+    //     author: "Émilie Leclerc",
+    //     category: "culture",
+    //     imageUrl: "https://images.unsplash.com/photo-1526047932273-341f2a7631f9?q=80&w=2080&auto=format&fit=crop",
+    //     tags: ["symbolisme", "tradition", "histoire"],
+    //     viewCount: 187,
+    //     featured: true
+    // }
 ];
 
 // Données de démo pour les utilisateurs
