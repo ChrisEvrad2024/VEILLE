@@ -28,7 +28,7 @@ const Catalog = () => {
   
   // Default filters
   const defaultFilters: FiltersType = {
-    priceRange: [0, 100],
+    priceRange: [0, 0],
     inStock: false,
     featured: false,
     popular: false,

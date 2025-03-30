@@ -39,21 +39,21 @@ const sampleProducts: Product[] = [
     //     featured: false,
     //     sku: 'BQT-SPRING-002'
     // },
-    {
-        id: 'exotic-orchid-display',
-        name: 'Orchidées Exotiques',
-        description: 'Élégante composition d\'orchidées phalaenopsis dans un vase contemporain.',
-        price: 89.99,
-        stock: 5,
-        images: [
-            'https://images.unsplash.com/photo-1566401619647-d5067e7282a3?q=80&w=1974',
-            'https://images.unsplash.com/photo-1598983062026-0fd189bb62c1?q=80&w=1974'
-        ],
-        category: 'plants',
-        popular: false,
-        featured: true,
-        sku: 'PLT-ORCH-001'
-    },
+    // {
+    //     id: 'exotic-orchid-display',
+    //     name: 'Orchidées Exotiques',
+    //     description: 'Élégante composition d\'orchidées phalaenopsis dans un vase contemporain.',
+    //     price: 89.99,
+    //     stock: 5,
+    //     images: [
+    //         'https://images.unsplash.com/photo-1566401619647-d5067e7282a3?q=80&w=1974',
+    //         'https://images.unsplash.com/photo-1598983062026-0fd189bb62c1?q=80&w=1974'
+    //     ],
+    //     category: 'plants',
+    //     popular: false,
+    //     featured: true,
+    //     sku: 'PLT-ORCH-001'
+    // },
     // {
     //     id: 'garden-succulent-trio',
     //     name: 'Trio de Succulentes',

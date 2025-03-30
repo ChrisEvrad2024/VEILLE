@@ -197,7 +197,7 @@ export function ProductForm({ product, categories, onSubmit, onCancel }: Product
                     <FormItem>
                       <FormLabel>Stock</FormLabel>
                       <FormControl>
-                        <Input type="number" {...field} />
+                        <Input type="number" {...field} min="0"/>
                       </FormControl>
                       <FormMessage />
                     </FormItem>

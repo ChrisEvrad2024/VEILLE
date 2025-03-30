@@ -48,36 +48,36 @@ export const products: Product[] = [
   //   featured: true,
   //   sku: 'BQT-ROSE-001'
   // },
-  {
-    id: 'spring-harmony',
-    name: 'Harmonie Printanière',
-    description: 'Une explosion de couleurs printanières avec un mélange de tulipes, jonquilles et renoncules.',
-    price: 49.99,
-    stock: 8,
-    images: [
-      'https://images.unsplash.com/photo-1613539246066-78db6f03a16f?q=80&w=1974',
-      'https://images.unsplash.com/photo-1546842931-886c185b4c8c?q=80&w=2085'
-    ],
-    category: 'bouquets',
-    popular: true,
-    featured: false,
-    sku: 'BQT-SPRING-002'
-  },
-  {
-    id: 'zen-orchid',
-    name: 'Orchidée Zen',
-    description: 'Une magnifique orchidée blanche en pot, symbole d\'élégance et de pureté.',
-    price: 69.99,
-    stock: 5,
-    images: [
-      'https://images.unsplash.com/photo-1524598171347-abf62dfd6694?q=80&w=1974',
-      'https://images.unsplash.com/photo-1594663358079-4a39ff4f4ef4?q=80&w=1974'
-    ],
-    category: 'potted-plants',
-    popular: true,
-    featured: true,
-    sku: 'PLT-ORCH-001'
-  },
+  // {
+  //   id: 'spring-harmony',
+  //   name: 'Harmonie Printanière',
+  //   description: 'Une explosion de couleurs printanières avec un mélange de tulipes, jonquilles et renoncules.',
+  //   price: 49.99,
+  //   stock: 8,
+  //   images: [
+  //     'https://images.unsplash.com/photo-1613539246066-78db6f03a16f?q=80&w=1974',
+  //     'https://images.unsplash.com/photo-1546842931-886c185b4c8c?q=80&w=2085'
+  //   ],
+  //   category: 'bouquets',
+  //   popular: true,
+  //   featured: false,
+  //   sku: 'BQT-SPRING-002'
+  // },
+  // {
+  //   id: 'zen-orchid',
+  //   name: 'Orchidée Zen',
+  //   description: 'Une magnifique orchidée blanche en pot, symbole d\'élégance et de pureté.',
+  //   price: 69.99,
+  //   stock: 5,
+  //   images: [
+  //     'https://images.unsplash.com/photo-1524598171347-abf62dfd6694?q=80&w=1974',
+  //     'https://images.unsplash.com/photo-1594663358079-4a39ff4f4ef4?q=80&w=1974'
+  //   ],
+  //   category: 'potted-plants',
+  //   popular: true,
+  //   featured: true,
+  //   sku: 'PLT-ORCH-001'
+  // },
   // {
   //   id: 'rustic-wildflowers',
   //   name: 'Fleurs Sauvages Rustiques',
