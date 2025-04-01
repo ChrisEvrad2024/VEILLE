@@ -24,11 +24,15 @@ const categoryFormSchema = z.object({
   description: z.string().min(10, {
     message: "La description doit contenir au moins 10 caractères",
   }),
-  id: z.string().min(2, {
-    message: "L'identifiant doit contenir au moins 2 caractères",
-  }).regex(/^[a-z0-9-]+$/, {
-    message: "L'identifiant ne peut contenir que des lettres minuscules, des chiffres et des tirets",
-  }),
+  id: z
+    .string()
+    .min(2, {
+      message: "L'identifiant doit contenir au moins 2 caractères",
+    })
+    .regex(/^[a-z0-9-]+$/, {
+      message:
+        "L'identifiant ne peut contenir que des lettres minuscules, des chiffres et des tirets",
+    }),
   image: z.string().optional(),
 });
 
@@ -40,10 +44,14 @@ interface CategoryFormProps {
   onCancel: () => void;
 }
 
-export function CategoryForm({ category, onSubmit, onCancel }: CategoryFormProps) {
+export function CategoryForm({
+  category,
+  onSubmit,
+  onCancel,
+}: CategoryFormProps) {
   const [imageUrl, setImageUrl] = useState<string>(category?.image || "");
   const [imageError, setImageError] = useState<string | null>(null);
-  
+
   // Get default values for the form
   const getDefaultValues = () => {
     if (category) {
@@ -70,13 +78,14 @@ export function CategoryForm({ category, onSubmit, onCancel }: CategoryFormProps
 
   // Auto-generate slug from name
   const autoGenerateId = (name: string) => {
-    if (!category) { // Only auto-generate if it's a new category
+    if (!category) {
+      // Only auto-generate if it's a new category
       const id = name
         .toLowerCase()
-        .replace(/[^\w\s-]/g, '')  // Remove special characters
-        .replace(/\s+/g, '-')      // Replace spaces with hyphens
-        .replace(/-+/g, '-');      // Replace multiple hyphens with a single one
-      
+        .replace(/[^\w\s-]/g, "") // Remove special characters
+        .replace(/\s+/g, "-") // Replace spaces with hyphens
+        .replace(/-+/g, "-"); // Replace multiple hyphens with a single one
+
       form.setValue("id", id);
     }
   };
@@ -91,14 +100,14 @@ export function CategoryForm({ category, onSubmit, onCancel }: CategoryFormProps
   // Check if image URL is valid
   const validateImageUrl = (url: string) => {
     if (!url) return true; // Empty URL is valid (optional field)
-    
+
     // Simple URL validation
     const pattern = /^(https?:\/\/.*\.(?:png|jpg|jpeg|gif|webp))(\?.*)?$/i;
     if (!pattern.test(url)) {
       setImageError("L'URL doit pointer vers une image (jpg, png, gif, webp)");
       return false;
     }
-    
+
     return true;
   };
 
@@ -122,7 +131,10 @@ export function CategoryForm({ category, onSubmit, onCancel }: CategoryFormProps
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
+      <form
+        onSubmit={form.handleSubmit(handleFormSubmit)}
+        className="space-y-6"
+      >
         <FormField
           control={form.control}
           name="name"
@@ -130,9 +142,9 @@ export function CategoryForm({ category, onSubmit, onCancel }: CategoryFormProps
             <FormItem>
               <FormLabel>Nom de la catégorie</FormLabel>
               <FormControl>
-                <Input 
-                  placeholder="Bouquets de mariage" 
-                  {...field} 
+                <Input
+                  placeholder="Bouquets de mariage"
+                  {...field}
                   onChange={(e) => {
                     field.onChange(e);
                     autoGenerateId(e.target.value);
@@ -151,14 +163,15 @@ export function CategoryForm({ category, onSubmit, onCancel }: CategoryFormProps
             <FormItem>
               <FormLabel>Identifiant</FormLabel>
               <FormControl>
-                <Input 
-                  placeholder="bouquets-mariage" 
-                  {...field} 
+                <Input
+                  placeholder="bouquets-mariage"
+                  {...field}
                   disabled={!!category} // Disable editing if updating an existing category
                 />
               </FormControl>
               <FormDescription>
-                Cet identifiant est utilisé dans les URLs et ne peut pas être modifié après la création.
+                Cet identifiant est utilisé dans les URLs et ne peut pas être
+                modifié après la création.
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -194,16 +207,18 @@ export function CategoryForm({ category, onSubmit, onCancel }: CategoryFormProps
                   placeholder="https://example.com/image.jpg"
                   value={imageUrl}
                   onChange={(e) => handleImageUrlChange(e.target.value)}
-                  className={imageError ? 'border-destructive' : ''}
+                  className={imageError ? "border-destructive" : ""}
                 />
               </FormControl>
               <FormDescription>
                 Entrez l'URL d'une image représentative pour cette catégorie.
               </FormDescription>
               {imageError && (
-                <p className="text-sm font-medium text-destructive">{imageError}</p>
+                <p className="text-sm font-medium text-destructive">
+                  {imageError}
+                </p>
               )}
-              
+
               {/* Image preview */}
               {imageUrl && !imageError && (
                 <div className="mt-2">
@@ -213,7 +228,11 @@ export function CategoryForm({ category, onSubmit, onCancel }: CategoryFormProps
                       src={imageUrl}
                       alt="Aperçu"
                       className="h-full w-full object-cover object-center"
-                      onError={() => setImageError("Impossible de charger l'image. Vérifiez l'URL.")}
+                      onError={() =>
+                        setImageError(
+                          "Impossible de charger l'image. Vérifiez l'URL."
+                        )
+                      }
                     />
                   </div>
                 </div>
@@ -222,7 +241,7 @@ export function CategoryForm({ category, onSubmit, onCancel }: CategoryFormProps
           )}
         />
 
-        <div className="flex justify-end space-x-2 pt-4">
+        <div className="flex justify-end space-x-2 pt-4 sticky bottom-0 bg-background pb-2 border-t mt-4">
           <Button type="button" variant="outline" onClick={onCancel}>
             Annuler
           </Button>

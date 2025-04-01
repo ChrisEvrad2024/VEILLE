@@ -311,7 +311,7 @@ const ProductsManagement = () => {
   // Reset all filters
   const resetFilters = () => {
     setSearchQuery("");
-    setSelectedCategory("all");
+    setSelectedCategory("");
     setStockFilter("all");
     setFeaturedFilter(undefined);
     setSortBy("newest");

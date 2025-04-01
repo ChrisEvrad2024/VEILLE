@@ -64,7 +64,7 @@ const Index = () => {
               <div className="relative">
                 <div className="aspect-[4/3] rounded-lg overflow-hidden">
                   <img 
-                    src="https://images.unsplash.com/photo-1584589167171-541ce45f1eea?q=80&w=1887" 
+                    src="/src/assets/logo.jpeg" 
                     alt="Fleuriste ChezFlora" 
                     className="w-full h-full object-cover"
                   />

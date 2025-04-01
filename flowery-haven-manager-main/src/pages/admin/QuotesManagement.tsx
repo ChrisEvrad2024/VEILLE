@@ -26,6 +26,7 @@ import {
   Calendar,
   DollarSign,
   X,
+  Info,
   User,
   FileText,
   Send

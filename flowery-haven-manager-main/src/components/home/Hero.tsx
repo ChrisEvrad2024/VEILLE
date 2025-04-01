@@ -7,7 +7,7 @@ import { ChevronRight } from 'lucide-react';
 const heroImages = [
   'https://images.unsplash.com/photo-1483794344563-d27a8d18014e?q=80&w=2070',
   'https://images.unsplash.com/photo-1470509037663-253afd7f0f51?q=80&w=1974',
-  'https://images.unsplash.com/photo-1508610048659-a06b669e3321?q=80&w=2070'
+  '/src/assets/logo.jpeg'
 ];
 
 const Hero =  () => {
