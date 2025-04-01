@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { orderService } from "@/services/order.service";
+import { userService } from "@/services/user.service";
+import { productService } from "@/services/product.service";
 import { 
   StatisticsWidget, 
   KpiCard 
@@ -36,38 +39,32 @@ import {
   AdminNotifications 
 } from "@/components/admin/AdminDashboardAlerts";
 
-const AdminDashboard =  () => {
+const AdminDashboard = () => {
   const [totalProducts, setTotalProducts] = useState(0);
   const [totalOrders, setTotalOrders] = useState(0);
   const [totalCustomers, setTotalCustomers] = useState(0);
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [lowStockProducts, setLowStockProducts] = useState<Product[]>([]);
   
-  useEffect(() => {
-    // Load data
-    const products = getAllProducts();
-    setTotalProducts(products.length);
-    
-    // Filter low stock products (stock < 5)
-    setLowStockProducts(products.filter(product => product.stock !== undefined && product.stock < 5));
-    
-    // This would come from an API in a real application
-    setTotalOrders(124);
-    setTotalCustomers(85);
-    setTotalRevenue(7845.50);
-  }, []);
+  // Définir les états pour les données de graphiques et tableaux
+  const [recentOrdersData, setRecentOrdersData] = useState([
+    { id: 'ORD-001', customer: 'Marie Dupont', date: '2023-06-05', amount: 59.99, status: 'Livré' },
+    { id: 'ORD-002', customer: 'Jean Martin', date: '2023-06-04', amount: 124.50, status: 'En cours' },
+    { id: 'ORD-003', customer: 'Sophie Bernard', date: '2023-06-03', amount: 45.75, status: 'Livré' },
+    { id: 'ORD-004', customer: 'Thomas Robert', date: '2023-06-02', amount: 89.99, status: 'Préparation' },
+    { id: 'ORD-005', customer: 'Laura Petit', date: '2023-06-01', amount: 35.50, status: 'Livré' },
+  ]);
   
-  // Sales data for charts
-  const monthlySales = [
+  const [monthlySales, setMonthlySales] = useState([
     { name: 'Jan', value: 1200 },
     { name: 'Fév', value: 1900 },
     { name: 'Mar', value: 1500 },
     { name: 'Avr', value: 2200 },
     { name: 'Mai', value: 2700 },
     { name: 'Juin', value: 2900 },
-  ];
+  ]);
   
-  const weeklyOrders = [
+  const [weeklyOrders, setWeeklyOrders] = useState([
     { name: 'Lun', value: 12 },
     { name: 'Mar', value: 19 },
     { name: 'Mer', value: 15 },
@@ -75,37 +72,163 @@ const AdminDashboard =  () => {
     { name: 'Ven', value: 27 },
     { name: 'Sam', value: 29 },
     { name: 'Dim', value: 18 },
-  ];
+  ]);
   
-  const topCategories = [
+  const [topCategories, setTopCategories] = useState([
     { name: 'Bouquets', value: 42 },
     { name: 'Plantes', value: 28 },
     { name: 'Fleurs', value: 18 },
     { name: 'Déco', value: 12 },
-  ];
+  ]);
   
-  const customerSources = [
+  const [customerSources, setCustomerSources] = useState([
     { name: 'Direct', value: 35 },
     { name: 'Social', value: 25 },
     { name: 'Search', value: 20 },
     { name: 'Referral', value: 15 },
     { name: 'Email', value: 5 },
-  ];
+  ]);
   
-  const recentOrdersData = [
-    { id: 'ORD-001', customer: 'Marie Dupont', date: '2023-06-05', amount: 59.99, status: 'Livré' },
-    { id: 'ORD-002', customer: 'Jean Martin', date: '2023-06-04', amount: 124.50, status: 'En cours' },
-    { id: 'ORD-003', customer: 'Sophie Bernard', date: '2023-06-03', amount: 45.75, status: 'Livré' },
-    { id: 'ORD-004', customer: 'Thomas Robert', date: '2023-06-02', amount: 89.99, status: 'Préparation' },
-    { id: 'ORD-005', customer: 'Laura Petit', date: '2023-06-01', amount: 35.50, status: 'Livré' },
-  ];
-
-  // Mock data for pending quote requests
-  const pendingQuoteRequests = [
+  const [pendingQuoteRequests, setPendingQuoteRequests] = useState([
     { id: 'QUO-001', customer: 'Entreprise ABC', date: '2023-06-05', type: 'Événement d\'entreprise', status: 'En attente' },
     { id: 'QUO-002', customer: 'Mariage Dupont', date: '2023-06-04', type: 'Mariage', status: 'En attente' },
     { id: 'QUO-003', customer: 'Restaurant Le Gourmet', date: '2023-06-03', type: 'Décoration', status: 'En attente' },
-  ];
+  ]);
+
+  useEffect(() => {
+    // Fonction pour charger toutes les données nécessaires
+    const loadDashboardData = async () => {
+      try {
+        // 1. Chargement des produits
+        const products = await productService.getAllProducts();
+        setTotalProducts(products.length);
+        
+        // Filtrer les produits en stock faible (stock < 5)
+        setLowStockProducts(products.filter(product => product.stock !== undefined && product.stock < 5));
+        
+        // 2. Chargement des statistiques de commandes
+        const orderStats = await orderService.getOrdersStatistics();
+        setTotalOrders(orderStats.totalOrders);
+        setTotalRevenue(orderStats.totalRevenue);
+        
+        // 3. Chargement des clients
+        try {
+          const users = await userService.getAllUsers();
+          setTotalCustomers(users.length);
+        } catch (error) {
+          console.warn("Impossible de charger les utilisateurs:", error);
+          // Valeur par défaut si le service n'est pas disponible
+        }
+        
+        // 4. Chargement des commandes récentes
+        try {
+          const allOrders = await orderService.getAllOrders();
+          if (allOrders && allOrders.length > 0) {
+            const recent = allOrders.slice(0, 5).map(order => ({
+              id: order.id,
+              customer: `${order.shippingAddress.firstName} ${order.shippingAddress.lastName}`,
+              date: order.createdAt,
+              amount: order.total,
+              status: order.status === 'delivered' ? 'Livré' : 
+                     order.status === 'processing' ? 'En cours' : 
+                     order.status === 'pending' ? 'Préparation' : order.status
+            }));
+            setRecentOrdersData(recent);
+            
+            // 5. Calculer les ventes mensuelles à partir des commandes
+            const months = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'];
+            const currentMonth = new Date().getMonth();
+            const salesByMonth = new Array(6).fill(0);
+            
+            // Calculer les 6 derniers mois de ventes
+            allOrders.forEach(order => {
+              const orderDate = new Date(order.createdAt);
+              const monthDiff = currentMonth - orderDate.getMonth() + (new Date().getFullYear() - orderDate.getFullYear()) * 12;
+              
+              if (monthDiff >= 0 && monthDiff < 6 && order.status !== 'cancelled' && order.status !== 'refunded') {
+                salesByMonth[5 - monthDiff] += order.total;
+              }
+            });
+            
+            // Créer les données pour le graphique
+            const monthlySalesData = [];
+            for (let i = 0; i < 6; i++) {
+              const monthIndex = (currentMonth - 5 + i + 12) % 12; // Calcul des 6 derniers mois
+              monthlySalesData.push({
+                name: months[monthIndex],
+                value: salesByMonth[i]
+              });
+            }
+            setMonthlySales(monthlySalesData);
+            
+            // 6. Calculer les commandes hebdomadaires
+            const daysOfWeek = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+            const today = new Date();
+            const startOfWeek = new Date(today);
+            startOfWeek.setDate(today.getDate() - today.getDay() + (today.getDay() === 0 ? -6 : 1)); // Lundi de cette semaine
+            
+            const weeklyOrdersData = daysOfWeek.map((day, index) => {
+              const date = new Date(startOfWeek);
+              date.setDate(startOfWeek.getDate() + index);
+              
+              // Compter les commandes pour ce jour
+              const count = allOrders.filter(order => {
+                const orderDate = new Date(order.createdAt);
+                return orderDate.getDate() === date.getDate() && 
+                       orderDate.getMonth() === date.getMonth() && 
+                       orderDate.getFullYear() === date.getFullYear();
+              }).length;
+              
+              return { name: day, value: count };
+            });
+            
+            setWeeklyOrders(weeklyOrdersData);
+            
+            // 7. Calculer les ventes par catégorie
+            if (products.length > 0) {
+              const categorySales = {};
+              
+              allOrders.forEach(order => {
+                if (order.status !== 'cancelled' && order.status !== 'refunded') {
+                  order.items.forEach(item => {
+                    const product = products.find(p => p.id === item.productId);
+                    if (product) {
+                      const category = product.category;
+                      categorySales[category] = (categorySales[category] || 0) + (item.price * item.quantity);
+                    }
+                  });
+                }
+              });
+              
+              // Calculer les pourcentages et créer le tableau pour le graphique
+              const totalSales = Object.values(categorySales).reduce((sum: any, val: any) => sum + val, 0);
+              if (totalSales > 0) {
+                const topCategoriesData = Object.entries(categorySales)
+                  .map(([name, value]) => ({ 
+                    name, 
+                    value: Math.round((value as number) * 100 / totalSales) 
+                  }))
+                  .sort((a, b) => (b.value as number) - (a.value as number))
+                  .slice(0, 4);
+                
+                if (topCategoriesData.length > 0) {
+                  setTopCategories(topCategoriesData);
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.warn("Impossible de charger les commandes:", error);
+          // On garde les valeurs par défaut
+        }
+        
+      } catch (error) {
+        console.error("Erreur lors du chargement des données du tableau de bord:", error);
+      }
+    };
+    
+    loadDashboardData();
+  }, []);
 
   return (
     <div className="space-y-6">

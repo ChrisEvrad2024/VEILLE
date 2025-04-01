@@ -28,10 +28,22 @@ import Cart from "./pages/Cart";
 import Wishlist from "./pages/Wishlist";
 import Blog from "./pages/Blog";
 import BlogPost from "./pages/BlogPost";
+// import BlogCategory from "./pages/BlogCategory";
+// import BlogTag from "./pages/BlogTag";
 import Contact from "./pages/Contact";
 import About from "./pages/About";
 
-// We'll keep these imports for the authentication module
+// Admin Blog Pages
+// import AdminBlogPosts from "./pages/admin/blog/BlogPosts";
+// import AdminNewBlogPost from "./pages/admin/blog/NewBlogPost";
+// import AdminEditBlogPost from "./pages/admin/blog/EditBlogPost";
+// import AdminBlogComments from "./pages/admin/blog/BlogComments";
+
+// Admin Media Pages
+// import AdminMedia from "./pages/admin/media/MediaLibrary";
+import AdminMediaUpload from "./pages/admin/media/MediaUpload";
+
+// Account Pages
 import MyAccount from "./pages/account/MyAccount";
 import AccountLayout from "./components/layout/AccountLayout";
 import ProfileSettings from "./pages/account/ProfileSettings";
@@ -45,7 +57,7 @@ import LoginHistory from "./pages/account/LoginHistory";
 import ProductsManagement from "./pages/admin/ProductsManagement";
 import CategoriesManagement from "./pages/admin/CategoriesManagement";
 
-// Import Cart, Order and Quote Management (seulement ceux qui ont été implémentés)
+// Import Cart, Order and Quote Management
 import Checkout from "./pages/Checkout";
 import OrderConfirmation from "./pages/OrderConfirmation";
 import OrderDetail from "./pages/account/OrderDetail";
@@ -53,7 +65,7 @@ import QuoteRequest from "./pages/QuoteRequest";
 import QuoteHistory from "./pages/account/QuoteHistory";
 import QuoteDetail from "./pages/account/QuoteDetail";
 
-// Import Admin Order Management (seulement ceux qui ont été implémentés)
+// Import Admin Order Management
 import OrdersManagement from "./pages/admin/OrdersManagement";
 import AdminQuoteDetail from "./pages/admin/AdminQuoteDetail";
 import AdminOrderDetail from "./pages/admin/AdminOrderDetail";
@@ -79,22 +91,26 @@ const App = () => {
             {/* Public routes */}
             <Route path="/" element={<Index />} />
             
-            {/* Basic store routes - keep minimal for testing */}
+            {/* Basic store routes */}
             <Route path="/catalog" element={<Catalog />} />
             <Route path="/product/:id" element={<ProductDetail />} />
             <Route path="/cart" element={<Cart />} />
             <Route path="/wishlist" element={<Wishlist />} />
-            <Route path="/blog" element={<Blog />} />
-            <Route path="/blog/:id" element={<BlogPost />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/about" element={<About />} />
+            
+            {/* Blog Routes */}
+            <Route path="/blog" element={<Blog />} />
+            <Route path="/blog/:id" element={<BlogPost />} />
+            {/* <Route path="/blog/category/:category" element={<BlogCategory />} />
+            <Route path="/blog/tag/:tag" element={<BlogTag />} /> */}
             
             {/* Cart, Checkout and Quote Request Routes */}
             <Route path="/checkout" element={<Checkout />} />
             <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />
             <Route path="/quote-request" element={<QuoteRequest />} />
             
-            {/* Auth Routes - Our current focus */}
+            {/* Auth Routes */}
             <Route path="/auth/login" element={<Login />} />
             <Route path="/auth/register" element={<Register />} />
             <Route path="/auth/forgot-password" element={<ForgotPassword />} />
@@ -118,12 +134,25 @@ const App = () => {
             <Route element={<RequireAdmin />}>
               <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<AdminDashboard />} />
+                
                 {/* Admin Product and Category Management */}
                 <Route path="products" element={<ProductsManagement />} />
                 <Route path="categories" element={<CategoriesManagement />} />
+                
+                {/* Admin Blog Management */}
+                {/* <Route path="blog" element={<AdminBlogPosts />} /> */}
+                {/* <Route path="blog/new" element={<AdminNewBlogPost />} />
+                <Route path="blog/:id/edit" element={<AdminEditBlogPost />} />
+                <Route path="blog/comments" element={<AdminBlogComments />} /> */}
+                
+                {/* Admin Media Management */}
+                {/* <Route path="media" element={<AdminMedia />} /> */}
+                <Route path="media/upload" element={<AdminMediaUpload />} />
+                
                 {/* Admin Order Management */}
                 <Route path="orders" element={<OrdersManagement />} />
                 <Route path="orders/:orderId" element={<AdminOrderDetail />} />
+                
                 {/* Admin Quote Management */}
                 <Route path="quotes" element={<QuotesManagement />} />
                 <Route path="quotes/:quoteId" element={<AdminQuoteDetail />} />

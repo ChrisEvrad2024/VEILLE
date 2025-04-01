@@ -30,6 +30,15 @@ const STORES_CONFIG = [
         ]
     },
     {
+        name: 'media',
+        keyPath: 'id',
+        indexes: [
+            { name: 'createdBy', keyPath: 'createdBy', options: { unique: false } },
+            { name: 'type', keyPath: 'type', options: { unique: false } },
+            { name: 'createdAt', keyPath: 'createdAt', options: { unique: false } }
+        ]
+    },
+    {
         name: 'categories',
         keyPath: 'id',
         indexes: [

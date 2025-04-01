@@ -1,6 +1,7 @@
 // src/pages/admin/OrderDetail.tsx
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
+import { PrintService } from "@/services/print.service";
 import {
   ChevronLeft,
   Package,
@@ -92,6 +93,39 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+
+const printOrder = () => {
+  if (!order) return;
+
+  PrintService.generateInvoice(order);
+
+  toast.success("Impression de la commande", {
+    description: "La facture a été générée et téléchargée",
+    duration: 3000,
+  });
+};
+
+const downloadInvoice = () => {
+  if (!order) return;
+
+  PrintService.generateInvoice(order);
+
+  toast.success("Téléchargement de la facture", {
+    description: "La facture a été générée et téléchargée",
+    duration: 3000,
+  });
+};
+
+const downloadPackingSlip = () => {
+  if (!order) return;
+
+  PrintService.generatePackingSlip(order);
+
+  toast.success("Téléchargement du bordereau", {
+    description: "Le bordereau d'expédition a été généré et téléchargé",
+    duration: 3000,
+  });
+};
 
 const AdminOrderDetail = () => {
   const { orderId } = useParams<{ orderId: string }>();

@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { dbService } from './db.service';
 import { cartService } from './cart.service';
 import { authService } from './auth.service';
+import { productService } from './product.service'; // Importation du service de produits
 import { Order, OrderItem, OrderStatus, OrderStatusHistory, OrderAddress, PaymentInfo } from '@/types/order';
 
 class OrderService {
@@ -108,7 +109,7 @@ class OrderService {
       };
 
       // Enregistrer la commande dans la base de données
-      await dbService.add('orders', order);
+      await dbService.addItem('orders', order);
 
       // Enregistrer l'historique du statut
       await this.addOrderStatusHistory(orderId, 'pending', 'Commande créée');
@@ -142,6 +143,9 @@ class OrderService {
         return { success: false, message: 'Commande introuvable.' };
       }
 
+      // Vérifier si le statut passe de non-livré à livré
+      const isBeingDelivered = newStatus === 'delivered' && order.status !== 'delivered';
+
       // Mettre à jour la commande
       const updatedOrder: Order = {
         ...order,
@@ -158,7 +162,7 @@ class OrderService {
         };
       }
 
-      await dbService.put('orders', updatedOrder);
+      await dbService.updateItem('orders', updatedOrder);
 
       // Ajouter à l'historique des statuts
       await this.addOrderStatusHistory(
@@ -168,10 +172,44 @@ class OrderService {
         authService.getCurrentUser()?.id
       );
 
+      // Si la commande vient d'être marquée comme livrée, mettre à jour le stock
+      if (isBeingDelivered) {
+        await this.updateProductStockAfterDelivery(order);
+      }
+
       return { success: true, message: 'Statut de la commande mis à jour avec succès.' };
     } catch (error) {
       console.error('Error updating order status:', error);
       return { success: false, message: 'Une erreur est survenue lors de la mise à jour du statut.' };
+    }
+  }
+
+  // Nouvelle méthode pour mettre à jour le stock des produits après livraison
+  private async updateProductStockAfterDelivery(order: Order): Promise<void> {
+    try {
+      console.log(`Mise à jour du stock après livraison de la commande ${order.id}`);
+      
+      // Pour chaque produit dans la commande
+      for (const item of order.items) {
+        // Récupérer le produit actuel
+        const product = await productService.getProductById(item.productId);
+        
+        if (!product) {
+          console.warn(`Produit ${item.productId} non trouvé, impossible de mettre à jour le stock`);
+          continue;
+        }
+        
+        // Calculer le nouveau stock
+        const currentStock = product.stock || 0;
+        const newStock = Math.max(0, currentStock - item.quantity);
+        
+        // Mettre à jour le stock du produit
+        await productService.updateProductStock(product.id, newStock);
+        
+        console.log(`Stock mis à jour pour ${product.name}: ${currentStock} → ${newStock}`);
+      }
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour du stock après livraison:', error);
     }
   }
 

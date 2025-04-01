@@ -597,3 +597,183 @@
   transform: scale(0);
   opacity: 1;
 }
+
+/* Ajoutez ces styles dans votre fichier CSS global */
+
+/* Animation de transition pour les étapes */
+.step-transition {
+  transition: all 0.3s ease-in-out;
+  transform-origin: center;
+}
+
+.step-transition-enter {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.step-transition-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.step-transition-exit {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.step-transition-exit-active {
+  opacity: 0;
+  transform: translateY(-20px);
+}
+
+/* Animation pour le bouton de paiement */
+@keyframes pulse-light {
+  0% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.animate-pulse-light {
+  animation: pulse-light 2s ease-in-out infinite;
+}
+
+/* Styles améliorés pour les cartes de paiement */
+.payment-method-card {
+  transition: all 0.2s ease;
+}
+
+.payment-method-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.payment-method-card.selected {
+  border-color: hsl(var(--primary));
+  background-color: hsl(var(--primary) / 0.1);
+}
+
+/* Effet de hover sur les cartes d'adresse */
+.address-card {
+  transition: all 0.2s ease;
+}
+
+.address-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.address-card.selected {
+  border-color: hsl(var(--primary));
+  background-color: hsl(var(--primary) / 0.1);
+}
+
+/* Style pour la barre de progression */
+.progress-bar {
+  height: 4px;
+  border-radius: 2px;
+  background-color: hsl(var(--muted));
+  overflow: hidden;
+}
+
+.progress-bar-inner {
+  height: 100%;
+  background-color: hsl(var(--primary));
+  transition: width 0.5s ease;
+}
+
+/* Amélioration de l'indicateur de sécurité */
+.security-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  background-color: hsl(var(--muted) / 0.3);
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.security-badge svg {
+  margin-right: 0.5rem;
+  color: hsl(var(--primary));
+}
+
+/* Style pour l'estimation de livraison */
+.delivery-estimate {
+  border-left: 3px solid hsl(var(--primary));
+  padding-left: 0.75rem;
+  margin: 1rem 0;
+}
+
+.delivery-date {
+  font-weight: 500;
+  color: hsl(var(--foreground));
+}
+
+/* Améliorations pour mobile */
+@media (max-width: 768px) {
+  .checkout-steps {
+    overflow-x: auto;
+    padding-bottom: 1rem;
+  }
+  
+  .checkout-step {
+    min-width: 80px;
+  }
+  
+  .checkout-summary {
+    position: sticky;
+    bottom: 0;
+    background-color: hsl(var(--background));
+    box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.05);
+    margin: 0 -1rem;
+    padding: 1rem;
+    border-top: 1px solid hsl(var(--border));
+    z-index: 10;
+  }
+}
+
+/* Style pour les badges de statut */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.status-success {
+  background-color: hsl(var(--success) / 0.1);
+  color: hsl(var(--success));
+  border: 1px solid hsl(var(--success) / 0.2);
+}
+
+.status-warning {
+  background-color: hsl(var(--warning) / 0.1);
+  color: hsl(var(--warning));
+  border: 1px solid hsl(var(--warning) / 0.2);
+}
+
+.status-info {
+  background-color: hsl(var(--info) / 0.1);
+  color: hsl(var(--info));
+  border: 1px solid hsl(var(--info) / 0.2);
+}
+
+/* Amélioration du contraste pour l'accessibilité */
+.high-contrast-label {
+  font-weight: 500;
+  color: hsl(var(--foreground));
+}
+
+.required-field::after {
+  content: " *";
+  color: hsl(var(--destructive));
+}

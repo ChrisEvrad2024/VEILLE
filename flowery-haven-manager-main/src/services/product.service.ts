@@ -1,5 +1,6 @@
 // src/services/product.service.ts
 import { dbService } from './db.service';
+import { v4 as uuidv4 } from 'uuid';
 
 // Types pour les produits et catégories
 export interface Product {
@@ -65,6 +66,7 @@ const getProductsByCategory = async (categoryId: string): Promise<Product[]> => 
     }
 };
 
+
 // Récupérer les produits populaires
 const getPopularProducts = async (): Promise<Product[]> => {
     try {
@@ -122,6 +124,40 @@ const updateProduct = async (product: Product): Promise<Product> => {
     }
 };
 
+// Nouvelle méthode: Mettre à jour uniquement le stock d'un produit
+const updateProductStock = async (productId: string, newStock: number): Promise<Product | null> => {
+    try {
+        const product = await getProductById(productId);
+        
+        if (!product) {
+            console.error(`Produit ${productId} non trouvé pour la mise à jour du stock`);
+            return null;
+        }
+        
+        const updatedProduct: Product = {
+            ...product,
+            stock: newStock,
+            updatedAt: new Date().toISOString(),
+        };
+        
+        await dbService.updateItem("products", updatedProduct);
+        
+        // Si le stock est épuisé, effectuer des actions supplémentaires si nécessaire
+        if (newStock === 0) {
+            console.log(`Produit ${product.name} maintenant en rupture de stock`);
+            // Ici, vous pourriez vouloir envoyer des notifications, etc.
+        } else if (newStock <= 5) {
+            console.log(`Alerte stock bas pour ${product.name}: ${newStock} unités restantes`);
+            // Envoi d'alerte de stock bas
+        }
+        
+        return updatedProduct;
+    } catch (error) {
+        console.error(`Erreur lors de la mise à jour du stock du produit ${productId}:`, error);
+        return null;
+    }
+};
+
 // Supprimer un produit
 const deleteProduct = async (id: string): Promise<boolean> => {
     try {
@@ -131,6 +167,40 @@ const deleteProduct = async (id: string): Promise<boolean> => {
         throw error;
     }
 };
+
+/**
+  * Récupère les produits avec un stock faible
+  */
+const getLowStockProducts = async (threshold: number = 5): Promise<Product[]> => {
+    try {
+        const allProducts = await getAllProducts();
+        return allProducts.filter(product => product.stock !== undefined && product.stock <= threshold);
+    } catch (error) {
+        console.error('Error getting low stock products:', error);
+        return [];
+    }
+};
+
+/**
+   * Recherche de produits
+   */
+const searchProducts = async (query: string): Promise<Product[]> => {
+    try {
+        const allProducts = await getAllProducts();
+        const lowerQuery = query.toLowerCase();
+
+        return allProducts.filter(product =>
+            product.name.toLowerCase().includes(lowerQuery) ||
+            product.description.toLowerCase().includes(lowerQuery) ||
+            product.category.toLowerCase().includes(lowerQuery) ||
+            (product.sku && product.sku.toLowerCase().includes(lowerQuery))
+        );
+    } catch (error) {
+        console.error(`Error searching products for "${query}":`, error);
+        return [];
+    }
+};
+
 
 // Récupérer toutes les catégories
 const getAllCategories = async (): Promise<Category[]> => {
@@ -189,6 +259,48 @@ const deleteCategory = async (id: string): Promise<boolean> => {
     }
 };
 
+/**
+   * Récupère les statistiques des produits
+   */
+const getProductStatistics = async (): Promise<{
+    totalProducts: number;
+    totalCategories: number;
+    lowStockProducts: number;
+    outOfStockProducts: number;
+}> => {
+    try {
+        const products = await getAllProducts();
+
+        // Compter les catégories uniques
+        const categories = new Set(products.map(product => product.category));
+
+        // Compter les produits avec stock faible
+        const lowStockProducts = products.filter(product =>
+            product.stock !== undefined && product.stock > 0 && product.stock <= 5
+        ).length;
+
+        // Compter les produits en rupture de stock
+        const outOfStockProducts = products.filter(product =>
+            product.stock !== undefined && product.stock === 0
+        ).length;
+
+        return {
+            totalProducts: products.length,
+            totalCategories: categories.size,
+            lowStockProducts,
+            outOfStockProducts
+        };
+    } catch(error) {
+        console.error('Error getting product statistics:', error);
+        return {
+            totalProducts: 0,
+            totalCategories: 0,
+            lowStockProducts: 0,
+            outOfStockProducts: 0
+        };
+    }
+};
+
 export const productService = {
     getAllProducts,
     getProductById,
@@ -197,10 +309,14 @@ export const productService = {
     getFeaturedProducts,
     addProduct,
     updateProduct,
+    updateProductStock, // Nouvelle méthode ajoutée
     deleteProduct,
     getAllCategories,
     getCategoryById,
     addCategory,
     updateCategory,
-    deleteCategory
+    deleteCategory,
+    getLowStockProducts,
+    searchProducts,
+    getProductStatistics
 };

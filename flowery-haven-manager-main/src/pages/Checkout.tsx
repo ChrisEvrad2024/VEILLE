@@ -1,3 +1,5 @@
+/* eslint-disable react-hooks/rules-of-hooks */
+/* eslint-disable @typescript-eslint/no-unused-expressions */
 // src/pages/Checkout.tsx
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
@@ -64,6 +66,94 @@ import { useToast } from "@/components/ui/use-toast";
 // Définir les étapes du paiement
 type CheckoutStep = "information" | "shipping" | "payment" | "review";
 
+const formatCardNumber = (value) => {
+  if (!value) return value;
+
+  // Supprimer tous les caractères non numériques
+  const v = value.replace(/\D/g, "");
+
+  // Ajouter un espace tous les 4 chiffres
+  const formatted = v.replace(/(\d{4})(?=\d)/g, "$1 ");
+
+  return formatted;
+};
+
+const formatExpiryDate = (value) => {
+  if (!value) return value;
+
+  // Supprimer tous les caractères non numériques
+  const v = value.replace(/\D/g, "");
+
+  // Ne garder que les 4 premiers chiffres
+  const cleaned = v.slice(0, 4);
+
+  // Ajouter un slash après les 2 premiers chiffres
+  if (cleaned.length > 2) {
+    return `${cleaned.slice(0, 2)}/${cleaned.slice(2)}`;
+  }
+
+  return cleaned;
+};
+
+const useFormattedExpiryInput = (onChange) => {
+  const handleChange = (e) => {
+    const input = e.target.value;
+    const formatted = formatExpiryDate(input);
+
+    // Mettre à jour l'input avec la valeur formatée
+    e.target.value = formatted;
+
+    // Appeler le onChange original avec la valeur formatée
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+    onChange && onChange(e);
+  };
+
+  return handleChange;
+};
+
+const formatCVC = (value) => {
+  if (!value) return value;
+
+  // Supprimer tous les caractères non numériques
+  const v = value.replace(/\D/g, "");
+
+  // Limiter à 4 chiffres maximum (pour Amex qui a des CVC à 4 chiffres)
+  return v.slice(0, 4);
+};
+
+const useFormattedCVCInput = (onChange) => {
+  const handleChange = (e) => {
+    const input = e.target.value;
+    const formatted = formatCVC(input);
+
+    // Mettre à jour l'input avec la valeur formatée
+    e.target.value = formatted;
+
+    // Appeler le onChange original avec la valeur formatée
+    onChange && onChange(e);
+  };
+
+  return handleChange;
+};
+
+const selectedFieldStyle = "border-primary bg-primary/5";
+
+const useFormattedCardInput = (onChange) => {
+  const handleChange = (e) => {
+    const input = e.target.value;
+    const formatted = formatCardNumber(input);
+
+    // Mettre à jour l'input avec la valeur formatée
+    e.target.value = formatted;
+
+    // Appeler le onChange original avec la valeur formatée
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+    onChange && onChange(e);
+  };
+
+  return handleChange;
+};
+
 // Schéma de validation pour l'adresse
 const addressSchema = z.object({
   firstName: z.string().min(2, "Le prénom est requis"),
@@ -80,9 +170,21 @@ const addressSchema = z.object({
 
 const paymentSchema = z.object({
   method: z.enum(["card", "paypal", "transfer", "cash"]),
-  cardNumber: z.string().optional(),
-  cardExpiry: z.string().optional(),
-  cardCvc: z.string().optional(),
+  cardNumber: z.string()
+    .optional()
+    .refine(val => !val || val.replace(/\s/g, '').length === 16, {
+      message: "Le numéro de carte doit contenir 16 chiffres"
+    }),
+  cardExpiry: z.string()
+    .optional()
+    .refine(val => !val || /^\d{2}\/\d{2}$/.test(val), {
+      message: "Format invalide. Utilisez MM/AA"
+    }),
+  cardCvc: z.string()
+    .optional()
+    .refine(val => !val || (val.length >= 3 && val.length <= 4), {
+      message: "Le CVC doit contenir 3 ou 4 chiffres"
+    }),
   cardName: z.string().optional(),
   saveCard: z.boolean().optional(),
   sameAsBilling: z.boolean(),
@@ -531,15 +633,24 @@ const Checkout = () => {
                           ))}
 
                           <div
+                            key="new-address"
                             className={`
-                              border rounded-lg p-4 cursor-pointer transition-all hover:border-primary flex items-center justify-center
-                              ${
-                                selectedAddress === null
-                                  ? "border-primary bg-primary/5"
-                                  : "border-border"
-                              }
-                            `}
-                            onClick={() => setSelectedAddress(null)}
+                                border rounded-lg p-4 cursor-pointer transition-all
+                                ${
+                                  selectedAddress === "new-address"
+                                    ? selectedFieldStyle
+                                    : "border-border hover:border-primary"
+                                }
+                              `}
+                            onClick={() => {
+                              addressForm.reset({
+                                firstName: userData?.firstName || "",
+                                lastName: userData?.lastName || "",
+                                phone: userData?.phone || "",
+                                country: "Cameroun",
+                              });
+                              setSelectedAddress("new-address");
+                            }}
                           >
                             <div className="text-center">
                               <div className="bg-muted rounded-full w-10 h-10 flex items-center justify-center mx-auto mb-2">
@@ -914,16 +1025,61 @@ const Checkout = () => {
                                           <span>Carte bancaire</span>
                                         </div>
                                         <div className="flex space-x-1">
-                                          <img
-                                            src="/path/to/visa.png"
-                                            alt="Visa"
+                                          <svg
                                             className="h-6"
-                                          />
-                                          <img
-                                            src="/path/to/mastercard.png"
-                                            alt="Mastercard"
+                                            viewBox="0 0 48 48"
+                                            fill="none"
+                                          >
+                                            <rect
+                                              width="48"
+                                              height="32"
+                                              rx="4"
+                                              fill="#1A1F71"
+                                            />
+                                            <path
+                                              d="M18.5 21L16 27H13L15.5 21H18.5Z"
+                                              fill="#FFFFFF"
+                                            />
+                                            <path
+                                              d="M26 21L23.5 27H20.5L23 21H26Z"
+                                              fill="#FFFFFF"
+                                            />
+                                            <path
+                                              d="M32 21L30 24.5L28.5 21H25.5L28.5 27H31.5L35 21H32Z"
+                                              fill="#FFFFFF"
+                                            />
+                                          </svg>
+                                          <svg
                                             className="h-6"
-                                          />
+                                            viewBox="0 0 48 48"
+                                            fill="none"
+                                          >
+                                            <rect
+                                              width="48"
+                                              height="32"
+                                              rx="4"
+                                              fill="#EB001B"
+                                              fillOpacity="0.15"
+                                            />
+                                            <circle
+                                              cx="16"
+                                              cy="16"
+                                              r="10"
+                                              fill="#EB001B"
+                                            />
+                                            <circle
+                                              cx="32"
+                                              cy="16"
+                                              r="10"
+                                              fill="#F79E1B"
+                                            />
+                                            <path
+                                              fillRule="evenodd"
+                                              clipRule="evenodd"
+                                              d="M24 22C26.2091 19.7909 26.2091 16.2091 24 14C21.7909 16.2091 21.7909 19.7909 24 22Z"
+                                              fill="#FF5F00"
+                                            />
+                                          </svg>
                                         </div>
                                       </div>
                                     </Label>
@@ -1024,10 +1180,28 @@ const Checkout = () => {
                                 <FormItem>
                                   <FormLabel>Numéro de carte</FormLabel>
                                   <FormControl>
-                                    <Input
-                                      placeholder="1234 5678 9012 3456"
-                                      {...field}
-                                    />
+                                    <div className="relative">
+                                      <Input
+                                        placeholder="1234 5678 9012 3456"
+                                        maxLength={19} // 16 chiffres + 3 espaces
+                                        onChange={useFormattedCardInput(
+                                          field.onChange
+                                        )}
+                                        onBlur={field.onBlur}
+                                        value={field.value || ""}
+                                        name={field.name}
+                                        className={`pr-10 ${
+                                          field.value
+                                            ? "border-primary focus:border-primary"
+                                            : ""
+                                        }`}
+                                      />
+                                      {field.value &&
+                                        field.value.replace(/\s/g, "")
+                                          .length === 16 && (
+                                          <CheckCircle2 className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-green-600" />
+                                        )}
+                                    </div>
                                   </FormControl>
                                   <FormMessage />
                                 </FormItem>
@@ -1042,7 +1216,27 @@ const Checkout = () => {
                                   <FormItem>
                                     <FormLabel>Date d'expiration</FormLabel>
                                     <FormControl>
-                                      <Input placeholder="MM/AA" {...field} />
+                                      <div className="relative">
+                                        <Input
+                                          placeholder="MM/AA"
+                                          maxLength={5}
+                                          onChange={useFormattedExpiryInput(
+                                            field.onChange
+                                          )}
+                                          onBlur={field.onBlur}
+                                          value={field.value || ""}
+                                          name={field.name}
+                                          className={
+                                            field.value
+                                              ? "border-primary focus:border-primary"
+                                              : ""
+                                          }
+                                        />
+                                        {field.value &&
+                                          field.value.length === 5 && (
+                                            <CheckCircle2 className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-green-600" />
+                                          )}
+                                      </div>
                                     </FormControl>
                                     <FormMessage />
                                   </FormItem>
@@ -1056,8 +1250,33 @@ const Checkout = () => {
                                   <FormItem>
                                     <FormLabel>CVC</FormLabel>
                                     <FormControl>
-                                      <Input placeholder="123" {...field} />
+                                      <div className="relative">
+                                        <Input
+                                          placeholder="123"
+                                          maxLength={4}
+                                          onChange={useFormattedCVCInput(
+                                            field.onChange
+                                          )}
+                                          onBlur={field.onBlur}
+                                          value={field.value || ""}
+                                          name={field.name}
+                                          className={
+                                            field.value &&
+                                            field.value.length >= 3
+                                              ? "border-primary focus:border-primary"
+                                              : ""
+                                          }
+                                        />
+                                        {field.value &&
+                                          field.value.length >= 3 && (
+                                            <CheckCircle2 className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-green-600" />
+                                          )}
+                                      </div>
                                     </FormControl>
+                                    <FormDescription className="text-xs flex items-center mt-1">
+                                      <Shield size={12} className="mr-1" />
+                                      Code de sécurité au dos de la carte
+                                    </FormDescription>
                                     <FormMessage />
                                   </FormItem>
                                 )}
@@ -1192,11 +1411,17 @@ const Checkout = () => {
                             </div>
                             <div className="text-right">
                               <p className="font-medium">
-                                {item.price.toFixed(2)} XAF
+                                {item.quantity * item.price.toFixed(2)} XAF
                               </p>
                             </div>
                           </div>
                         ))}
+                        <div className="flex justify-between font-medium text-lg items-center">
+                          <span>Total</span>
+                          <span className="text-xl text-primary font-bold">
+                            {totals.total.toFixed(2)} XAF
+                          </span>
+                        </div>
                       </div>
                     </div>
 
