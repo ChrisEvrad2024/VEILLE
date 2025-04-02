@@ -30,6 +30,9 @@ import BlogPost from "./pages/BlogPost";
 import Contact from "./pages/Contact";
 import About from "./pages/About";
 
+// Import CMSPage for dynamic content
+import CMSPage from "./pages/CMSPage";
+
 // Admin Blog Pages
 import BlogDashboard from "./pages/admin/blog/BlogDashboard";
 import CommentModeration from "./pages/admin/blog/CommentModeration";
@@ -180,6 +183,9 @@ const App = () => {
                 <Route path="quotes/:quoteId" element={<AdminQuoteDetail />} />
               </Route>
             </Route>
+
+            {/* Dynamic CMS Pages (must be after all explicit routes to avoid conflicts) */}
+            <Route path="/:slug" element={<CMSPage />} />
 
             {/* Catch-all route */}
             <Route path="*" element={<NotFound />} />
