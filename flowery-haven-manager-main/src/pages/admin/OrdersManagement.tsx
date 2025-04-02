@@ -4,6 +4,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { PrintService } from "@/services/print.service";
 import {
   Search,
+  Info,
   Filter,
   Printer,
   Download,

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -14,8 +14,9 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, ArrowLeft, AlertCircle } from "lucide-react";
 import { authAdapter } from "@/services/adapters";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 // Define form schema
 const formSchema = z.object({
@@ -31,7 +32,7 @@ const AuthLayoutWithLogo = ({ title, description, children }) => {
       <div className="hidden md:flex md:w-1/2 bg-gray-50 items-center justify-center p-8">
         <div className="max-w-md">
           <img 
-            src="/src/assets/logo_nobg.png" 
+            src="/assets/logo_nobg.png" 
             alt="CHEZFLORA" 
             className="w-full max-w-xs mx-auto"
           />
@@ -49,7 +50,7 @@ const AuthLayoutWithLogo = ({ title, description, children }) => {
           {/* On mobile only, show a smaller logo */}
           <div className="md:hidden flex justify-center mb-8">
             <img 
-              src="/src/assets/logo_nobg.png" 
+              src="/assets/logo_nobg.png" 
               alt="CHEZFLORA" 
               className="w-40"
             />
@@ -65,9 +66,22 @@ const AuthLayoutWithLogo = ({ title, description, children }) => {
 const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [loginError, setLoginError] = useState("");
   const navigate = useNavigate();
   const location = useLocation();
-  const from = location.state?.from || "/";
+
+  // Check if we have a stored path, otherwise use location state or default to home
+  const getRedirectPath = () => {
+    // First priority: path stored in localStorage (from RequireAuth)
+    const storedPath = localStorage.getItem('authRedirectPath');
+    if (storedPath) return storedPath;
+    
+    // Second priority: from location state (React Router)
+    if (location.state?.from) return location.state.from;
+    
+    // Default fallback
+    return '/';
+  };
 
   // Initialize form
   const form = useForm<z.infer<typeof formSchema>>({
@@ -78,30 +92,54 @@ const Login = () => {
     },
   });
 
+  // Reset error when form values change
+  useEffect(() => {
+    if (loginError) {
+      const subscription = form.watch(() => {
+        setLoginError("");
+      });
+      return () => subscription.unsubscribe();
+    }
+  }, [form, loginError]);
+
   // Form submission handler
   const onSubmit = async (data: z.infer<typeof formSchema>) => {
     setIsLoading(true);
+    setLoginError("");
     
     try {
       // Use auth adapter to login
-      await authAdapter.login(data.email, data.password);
+      const result = await authAdapter.login(data.email, data.password);
       
       // Check if user is admin to determine redirect
       const isAdmin = authAdapter.isAdmin();
+      const redirectTo = isAdmin ? "/admin" : getRedirectPath();
       
       toast.success("Connexion réussie", {
         description: isAdmin 
           ? "Bienvenue dans l'interface d'administration" 
-          : "Bienvenue sur votre compte Floralie",
+          : "Bienvenue sur votre compte Chez Flora",
       });
       
       // Redirect to admin dashboard or previous page
-      navigate(isAdmin ? "/admin" : from);
+      navigate(redirectTo);
     } catch (error) {
       console.error("Login error:", error);
-      toast.error("Échec de la connexion", {
-        description: error instanceof Error ? error.message : "Vérifiez vos identifiants et réessayez",
-      });
+      
+      // Set error message for display
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : "Vérifiez vos identifiants et réessayez";
+        
+      setLoginError(errorMessage);
+      
+      // Don't show toast for authentication errors to avoid duplicate messages
+      if (!errorMessage.includes("mot de passe incorrect") && 
+          !errorMessage.includes("Email ou mot de passe")) {
+        toast.error("Échec de la connexion", {
+          description: errorMessage,
+        });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -114,6 +152,29 @@ const Login = () => {
       title="Connexion"
       description="Connectez-vous à votre compte pour accéder à vos commandes et favoris."
     >
+      {/* Button to return to site */}
+      <div className="mb-6">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          asChild 
+          className="flex items-center text-muted-foreground hover:text-primary"
+        >
+          <Link to="/">
+            <ArrowLeft size={16} className="mr-2" />
+            Revenir sur le site
+          </Link>
+        </Button>
+      </div>
+      
+      {/* Error message */}
+      {loginError && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertCircle className="h-4 w-4 mr-2" />
+          <AlertDescription>{loginError}</AlertDescription>
+        </Alert>
+      )}
+      
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <FormField
@@ -195,7 +256,7 @@ const Login = () => {
       <div className="mt-8 p-4 bg-muted rounded-md">
         <p className="text-sm text-center font-medium">CHEZ_FLORA</p>
         <p className="text-xs text-center text-muted-foreground mt-1">
-          Prenez plaisir a vous connecter à CHEZFLORA
+          Prenez plaisir à vous connecter à CHEZFLORA
         </p>
       </div>
     </AuthLayoutWithLogo>

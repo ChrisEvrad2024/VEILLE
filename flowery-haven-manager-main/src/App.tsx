@@ -26,7 +26,6 @@ import Catalog from "./pages/Catalog";
 import ProductDetail from "./pages/ProductDetail";
 import Cart from "./pages/Cart";
 import Wishlist from "./pages/Wishlist";
-import Blog from "./pages/Blog";
 import BlogPost from "./pages/BlogPost";
 // import BlogCategory from "./pages/BlogCategory";
 // import BlogTag from "./pages/BlogTag";
@@ -34,10 +33,12 @@ import Contact from "./pages/Contact";
 import About from "./pages/About";
 
 // Admin Blog Pages
-// import AdminBlogPosts from "./pages/admin/blog/BlogPosts";
-// import AdminNewBlogPost from "./pages/admin/blog/NewBlogPost";
-// import AdminEditBlogPost from "./pages/admin/blog/EditBlogPost";
-// import AdminBlogComments from "./pages/admin/blog/BlogComments";
+import BlogDashboard from "./pages/admin/blog/BlogDashboard";
+import CommentModeration from "./pages/admin/blog/CommentModeration";
+import BlogScheduler from "./pages/admin/blog/BlogScheduler";
+import BlogStatistics from "./pages/admin/blog/BlogStatistics";
+import Blog from "./pages/Blog";
+import BlogPostDetail from "./pages/BlogPostDetail";
 
 // Admin Media Pages
 // import AdminMedia from "./pages/admin/media/MediaLibrary";
@@ -76,7 +77,7 @@ const queryClient = new QueryClient();
 const App = () => {
   // Initialize database and services
   useEffect(() => {
-    initialize().catch(error => {
+    initialize().catch((error) => {
       console.error("Failed to initialize services:", error);
     });
   }, []);
@@ -90,7 +91,7 @@ const App = () => {
           <Routes>
             {/* Public routes */}
             <Route path="/" element={<Index />} />
-            
+
             {/* Basic store routes */}
             <Route path="/catalog" element={<Catalog />} />
             <Route path="/product/:id" element={<ProductDetail />} />
@@ -98,24 +99,30 @@ const App = () => {
             <Route path="/wishlist" element={<Wishlist />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/about" element={<About />} />
-            
+
             {/* Blog Routes */}
             <Route path="/blog" element={<Blog />} />
-            <Route path="/blog/:id" element={<BlogPost />} />
+            <Route path="/blog/:id" element={<BlogPostDetail />} />
             {/* <Route path="/blog/category/:category" element={<BlogCategory />} />
             <Route path="/blog/tag/:tag" element={<BlogTag />} /> */}
-            
+
             {/* Cart, Checkout and Quote Request Routes */}
             <Route path="/checkout" element={<Checkout />} />
-            <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />
+            <Route
+              path="/order-confirmation/:orderId"
+              element={<OrderConfirmation />}
+            />
             <Route path="/quote-request" element={<QuoteRequest />} />
-            
+
             {/* Auth Routes */}
             <Route path="/auth/login" element={<Login />} />
             <Route path="/auth/register" element={<Register />} />
             <Route path="/auth/forgot-password" element={<ForgotPassword />} />
-            <Route path="/auth/reset-password/:token" element={<ResetPassword />} />
-            
+            <Route
+              path="/auth/reset-password/:token"
+              element={<ResetPassword />}
+            />
+
             {/* Protected Account Routes */}
             <Route element={<RequireAuth />}>
               <Route path="/account" element={<AccountLayout />}>
@@ -129,36 +136,36 @@ const App = () => {
                 <Route path="addresses" element={<Addresses />} />
               </Route>
             </Route>
-            
+
             {/* Admin Routes */}
             <Route element={<RequireAdmin />}>
               <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<AdminDashboard />} />
-                
+
                 {/* Admin Product and Category Management */}
                 <Route path="products" element={<ProductsManagement />} />
                 <Route path="categories" element={<CategoriesManagement />} />
-                
+
                 {/* Admin Blog Management */}
-                {/* <Route path="blog" element={<AdminBlogPosts />} /> */}
-                {/* <Route path="blog/new" element={<AdminNewBlogPost />} />
-                <Route path="blog/:id/edit" element={<AdminEditBlogPost />} />
-                <Route path="blog/comments" element={<AdminBlogComments />} /> */}
-                
+                <Route path="blog" element={<BlogDashboard />} />
+                <Route path="blog/comments" element={<CommentModeration />} />
+                <Route path="blog/scheduler" element={<BlogScheduler />} />
+                <Route path="blog/statistics" element={<BlogStatistics />} />
+
                 {/* Admin Media Management */}
                 {/* <Route path="media" element={<AdminMedia />} /> */}
                 <Route path="media/upload" element={<AdminMediaUpload />} />
-                
+
                 {/* Admin Order Management */}
                 <Route path="orders" element={<OrdersManagement />} />
                 <Route path="orders/:orderId" element={<AdminOrderDetail />} />
-                
+
                 {/* Admin Quote Management */}
                 <Route path="quotes" element={<QuotesManagement />} />
                 <Route path="quotes/:quoteId" element={<AdminQuoteDetail />} />
               </Route>
             </Route>
-            
+
             {/* Catch-all route */}
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -21,14 +21,8 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { getCartItemCount } from "@/lib/cart";
-
-// Define type for Wishlist items based on existing code
-type WishlistItem = {
-  id: string;
-  name: string;
-  price: number;
-  image: string;
-};
+import { wishlistAdapter } from "@/services/adapters";
+import { authService } from "@/services/auth.service";
 
 const MyAccount = () => {
   const [userData, setUserData] = useState<any>(null);
@@ -36,35 +30,28 @@ const MyAccount = () => {
   const [cartCount, setCartCount] = useState(0);
 
   useEffect(() => {
-    // Get user data from localStorage
-    const user = localStorage.getItem("user");
+    // Get user data
+    const user = authService.getCurrentUser();
     if (user) {
-      try {
-        setUserData(JSON.parse(user));
-      } catch (error) {
-        console.error("Failed to parse user data:", error);
-      }
+      setUserData(user);
     }
 
     // Get wishlist and cart counts
-    // Using our own function to get wishlist items since the export is missing
-    const getWishlistItems = (): WishlistItem[] => {
+    const updateCounts = async () => {
       try {
-        const items = localStorage.getItem("wishlist");
-        return items ? JSON.parse(items) : [];
+        const wishlist = await wishlistAdapter.getWishlist();
+        setWishlistCount(wishlist.length);
+        setCartCount(getCartItemCount());
       } catch (error) {
-        console.error("Failed to parse wishlist items:", error);
-        return [];
+        console.error("Error updating counts:", error);
       }
     };
-
-    setWishlistCount(getWishlistItems().length);
-    setCartCount(getCartItemCount());
+    
+    updateCounts();
 
     // Update counts when localStorage changes
     const handleStorageChange = () => {
-      setWishlistCount(getWishlistItems().length);
-      setCartCount(getCartItemCount());
+      updateCounts();
     };
 
     window.addEventListener("storage", handleStorageChange);
@@ -78,7 +65,7 @@ const MyAccount = () => {
     };
   }, []);
 
-  // Account sections
+  // Account sections - main grid
   const accountCards = [
     {
       title: "Informations personnelles",
@@ -102,11 +89,11 @@ const MyAccount = () => {
       color: "bg-purple-50",
     },
     {
-      title: "Méthodes de paiement",
-      description: "Gérez vos cartes bancaires et autres méthodes de paiement",
-      icon: <CreditCard className="h-5 w-5" />,
-      href: "/account/payment",
-      color: "bg-yellow-50",
+      title: "Mes devis",
+      description: "Consultez et gérez vos demandes de devis personnalisés",
+      icon: <FileText className="h-5 w-5" />,
+      href: "/account/quotes",
+      color: "bg-amber-50",
     },
   ];
 
@@ -115,7 +102,7 @@ const MyAccount = () => {
       {/* Welcome section */}
       <div className="space-y-2">
         <h1 className="text-2xl font-serif">
-          Bonjour, {userData?.firstName} 👋
+          Bonjour, {userData?.firstName || 'utilisateur'} 👋
         </h1>
         <p className="text-muted-foreground">
           Bienvenue dans votre espace personnel. Gérez vos informations,
@@ -199,44 +186,6 @@ const MyAccount = () => {
           </Link>
         ))}
       </div>
-
-      <Link to="/account/orders">
-        <Card className="h-full hover:shadow-md transition-shadow">
-          <CardHeader>
-            <div className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center mb-2">
-              <ShoppingBag size={20} className="text-green-600" />
-            </div>
-            <CardTitle className="text-xl">Mes commandes</CardTitle>
-            <CardDescription>
-              Suivez vos commandes et l'historique d'achats
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button variant="ghost" className="text-primary">
-              Gérer &rarr;
-            </Button>
-          </CardContent>
-        </Card>
-      </Link>
-
-      <Link to="/account/quotes">
-        <Card className="h-full hover:shadow-md transition-shadow">
-          <CardHeader>
-            <div className="w-10 h-10 rounded-full bg-purple-50 flex items-center justify-center mb-2">
-              <FileText size={20} className="text-purple-600" />
-            </div>
-            <CardTitle className="text-xl">Mes devis</CardTitle>
-            <CardDescription>
-              Consultez et gérez vos demandes de devis personnalisés
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button variant="ghost" className="text-primary">
-              Gérer &rarr;
-            </Button>
-          </CardContent>
-        </Card>
-      </Link>
     </div>
   );
 };

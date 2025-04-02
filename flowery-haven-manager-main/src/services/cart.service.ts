@@ -254,7 +254,7 @@ class CartService {
     try {
       let product: Product;
       
-      // If a string ID was passed, fetch the product
+      // Si un string ID a été passé, récupérer le produit
       if (typeof productOrId === 'string') {
         const fetchedProduct = await productService.getProductById(productOrId);
         if (!fetchedProduct) {
@@ -264,35 +264,35 @@ class CartService {
       } else {
         product = productOrId;
       }
-
+  
       const currentUser = authService.getCurrentUser();
       const cart = await this.getCart();
       
-      // Check if item with same product and options exists
+      // Vérifier si un article avec le même produit et options existe
       const existingItemIndex = cart.findIndex(item => 
         item.productId === product.id && 
         JSON.stringify(item.options || {}) === JSON.stringify(options || {})
       );
       
       if (existingItemIndex >= 0) {
-        // Update quantity if item exists
+        // Mettre à jour la quantité si l'article existe
         const updatedItem = {
           ...cart[existingItemIndex],
           quantity: (cart[existingItemIndex].quantity || 1) + quantity
         };
         
         if (currentUser) {
-          // For authenticated users, update in IndexedDB
+          // Pour les utilisateurs authentifiés, mettre à jour dans IndexedDB
           try {
             await dbService.updateItem('cart', updatedItem);
           } catch (error) {
             console.error('Error updating item in IndexedDB:', error);
-            // Fall back to localStorage
+            // Fallback to localStorage
             cart[existingItemIndex] = updatedItem;
             localStorage.setItem(this.storageKey, JSON.stringify(cart));
           }
         } else {
-          // For guest users, update in localStorage
+          // Pour les utilisateurs invités, mettre à jour dans localStorage
           cart[existingItemIndex] = updatedItem;
           localStorage.setItem(this.storageKey, JSON.stringify(cart));
         }
@@ -300,32 +300,33 @@ class CartService {
         this.dispatchCartUpdatedEvent();
         return updatedItem;
       } else {
-        // Add new item
+        // Ajouter un nouvel élément
         const newItem: CartItem = {
           id: uuidv4(),
           userId: currentUser?.id || 'local',
           productId: product.id,
-          name: product.name,
-          price: product.price,
+          name: product.name || "Produit",
+          price: product.price || 0,
           quantity,
-          image: product.images[0],
+          // Utiliser une méthode sécurisée pour obtenir l'image
+          image: product.image || (product.images && product.images.length > 0 ? product.images[0] : "/assets/placeholder.png"),
           dateAdded: new Date(),
           options,
           product
         };
         
         if (currentUser) {
-          // For authenticated users, add to IndexedDB
+          // Pour les utilisateurs authentifiés, ajouter à IndexedDB
           try {
             await dbService.addItem('cart', newItem);
           } catch (error) {
             console.error('Error adding item to IndexedDB:', error);
-            // Fall back to localStorage
+            // Fallback to localStorage
             cart.push(newItem);
             localStorage.setItem(this.storageKey, JSON.stringify(cart));
           }
         } else {
-          // For guest users, add to localStorage
+          // Pour les utilisateurs invités, ajouter à localStorage
           cart.push(newItem);
           localStorage.setItem(this.storageKey, JSON.stringify(cart));
         }

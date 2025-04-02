@@ -1,4 +1,4 @@
-// Types pour le blog
+// src/types/blog.ts
 export interface BlogPost {
   id: number;
   title: string;
@@ -6,22 +6,24 @@ export interface BlogPost {
   excerpt?: string;
   slug: string;
   author: string;
-  authorId?: number;
+  authorId?: string;
   date: string;
-  category: number;
+  category: string;
   tags?: string[];
-  featuredImage?: string;
+  imageUrl?: string;
   status: 'draft' | 'published' | 'archived';
   viewCount: number;
+  commentCount?: number;
   createdAt: string;
   updatedAt: string;
+  publishDate?: string; // Date à laquelle publier automatiquement
 }
 
 export interface BlogComment {
   id?: number;
   postId: number;
   author: string;
-  authorId?: number;
+  authorId?: string;
   authorEmail?: string;
   content: string;
   date: string;
@@ -33,7 +35,7 @@ export interface BlogComment {
 export interface CommentReaction {
   type: 'like' | 'love' | 'laugh';
   count: number;
-  users: number[];
+  users: string[];
 }
 
 export interface BlogCategory {
@@ -42,4 +44,23 @@ export interface BlogCategory {
   slug: string;
   description?: string;
   postCount?: number;
+  color?: string;
+  icon?: string;
+}
+
+export interface BlogTag {
+  name: string;
+  count: number;
+}
+
+export interface BlogStats {
+  totalPosts: number;
+  totalViews: number;
+  totalComments: number;
+  popularPosts: BlogPost[];
+  recentComments: BlogComment[];
+  categoriesDistribution: {
+    category: string;
+    count: number;
+  }[];
 }

@@ -1,6 +1,12 @@
 import React, { useState } from 'react';
 import { blogService } from '@/services/blog.service';
 import { authService } from '@/services/auth.service';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { AlertCircle, Loader2 } from "lucide-react";
+
 
 interface BlogCommentFormProps {
   postId: number;

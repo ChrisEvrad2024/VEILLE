@@ -20,6 +20,7 @@ import {
   ArrowLeft,
   Clock,
   Plus,
+  CornerDownRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";

@@ -185,22 +185,22 @@ const AboutPage = () => {
               {
                 name: "Marie Dupont",
                 role: "Fondatrice & Directrice Artistique",
-                image: "/src/assets/logo.jpeg",
+                image: "/assets/logo.jpeg",
               },
               {
                 name: "Pierre Dupont",
                 role: "Co-fondateur & Responsable des Opérations",
-                image: "/src/assets/logo.jpeg",
+                image: "/assets/logo.jpeg",
               },
               {
                 name: "Sophie Martin",
                 role: "Fleuriste Senior",
-                image: "/src/assets/logo.jpeg",
+                image: "/assets/logo.jpeg",
               },
               {
                 name: "Thomas Petit",
                 role: "Responsable des Événements",
-                image: "/src/assets/logo.jpeg",
+                image: "/assets/logo.jpeg",
               },
             ].map((member, index) => (
               <div key={index} className="text-center">
