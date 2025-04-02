@@ -804,7 +804,7 @@ const QuoteDetail = () => {
                       Lun-Ven, 9h à 18h
                     </p>
                     <a href="tel:+237691234567" className="text-sm text-primary hover:underline">
-                      +237 691 234 567
+                      +237 655 746 714
                     </a>
                   </div>
                   

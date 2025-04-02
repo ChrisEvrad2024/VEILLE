@@ -1,14 +1,10 @@
 // src/services/db.service.ts
 
+import { dbConnectionManager } from './db-connection-manager';
+
 /**
  * Service pour gérer les opérations de base de données avec IndexedDB
- * Combine les fonctionnalités des deux implémentations précédentes
  */
-
-// Configuration de la base de données
-const DB_NAME = 'chezFlora';
-// Set a higher initial version to prevent conflicts
-const DB_VERSION = 3;
 
 // Interface pour les options de requête
 interface QueryOptions {
@@ -125,6 +121,36 @@ const STORES_CONFIG = [
         ]
     },
     {
+        name: 'cmsRevisions',
+        keyPath: 'id',
+        indexes: [
+            { name: 'pageId', keyPath: 'pageId', options: { unique: false } },
+            { name: 'revisionNumber', keyPath: 'revisionNumber', options: { unique: false } }
+        ]
+    },
+    {
+        name: 'cmsComponents',
+        keyPath: 'id',
+        indexes: [
+            { name: 'type', keyPath: 'type', options: { unique: false } },
+            { name: 'isActive', keyPath: 'isActive', options: { unique: false } }
+        ]
+    },
+    {
+        name: 'cmsTemplates',
+        keyPath: 'id',
+        indexes: [
+            { name: 'isActive', keyPath: 'isActive', options: { unique: false } }
+        ]
+    },
+    {
+        name: 'cmsMedia',
+        keyPath: 'id',
+        indexes: [
+            { name: 'type', keyPath: 'type', options: { unique: false } }
+        ]
+    },
+    {
         name: 'userRoles',
         keyPath: 'id',
         indexes: [
@@ -173,32 +199,25 @@ const STORES_CONFIG = [
 ];
 
 /**
- * Function to get current database version
+ * Initialize the database
  */
-const getCurrentDbVersion = (): Promise<number | null> => {
-    return new Promise((resolve) => {
-        // Open the database without specifying version
-        const request = indexedDB.open(DB_NAME);
-        
-        request.onsuccess = () => {
-            const version = request.result.version;
-            request.result.close();
-            resolve(version);
-        };
-        
-        request.onerror = () => {
-            // If there's an error, resolve with null - indicates no existing database
-            resolve(null);
-        };
-    });
+const initDatabase = async (): Promise<void> => {
+    // Configure the connection manager with our stores
+    dbConnectionManager.configure(STORES_CONFIG);
+    
+    // Initialize the connection
+    await dbConnectionManager.initialize();
 };
 
 /**
- * Fonction utilitaire pour supprimer la base de données (en développement)
+ * Delete the database
  */
 const deleteDatabase = (): Promise<void> => {
     return new Promise((resolve, reject) => {
-        const request = indexedDB.deleteDatabase(DB_NAME);
+        dbConnectionManager.closeConnection();
+        
+        const request = indexedDB.deleteDatabase('chezFlora');
+        
         request.onerror = () => reject(request.error);
         request.onsuccess = () => {
             console.log("Database deleted successfully");
@@ -207,280 +226,92 @@ const deleteDatabase = (): Promise<void> => {
     });
 };
 
-const checkStoresExist = (db: IDBDatabase): boolean => {
-    const requiredStores = STORES_CONFIG.map(store => store.name);
-    for (const storeName of requiredStores) {
-        if (!db.objectStoreNames.contains(storeName)) {
-            console.warn(`Missing object store: ${storeName}`);
-            return false;
-        }
-    }
-    return true;
+/**
+ * Ensure database is initialized
+ */
+const ensureDatabaseInitialized = async (): Promise<void> => {
+    await initDatabase();
 };
 
 /**
- * Initialiser la base de données
- */
-// Ajoutons un compteur de tentatives global pour éviter la récursion infinie
-let initAttempt = 0;
-const MAX_INIT_ATTEMPTS = 2;
-
-// Constante globale pour éviter de hardcoder la version partout
-let CURRENT_DB_VERSION = DB_VERSION;
-
-/**
- * Check if database exists with a version and reset if needed
- */
-const checkAndResetIfNeeded = async (): Promise<void> => {
-    try {
-        // Get the current version of the database
-        const currentVersion = await getCurrentDbVersion();
-        
-        if (currentVersion !== null) {
-            // Database exists, adjust our version to be higher
-            CURRENT_DB_VERSION = Math.max(CURRENT_DB_VERSION, currentVersion);
-            
-            // If you're in development and want to force a reset
-            const forceReset = false; // Set to true to force database rebuild
-            
-            if (forceReset) {
-                console.log("Forcing database reset...");
-                await deleteDatabase();
-                CURRENT_DB_VERSION = DB_VERSION; // Reset to base version
-            }
-        }
-    } catch (error) {
-        console.error("Error checking database version:", error);
-    }
-};
-
-/**
- * Initialiser la base de données avec une approche non récursive
- */
-const initDatabase = async (): Promise<IDBDatabase> => {
-    // First check if we need to adjust the version
-    await checkAndResetIfNeeded();
-    
-    return new Promise((resolve, reject) => {
-        console.log(`Opening database with version ${CURRENT_DB_VERSION}`);
-        const request = indexedDB.open(DB_NAME, CURRENT_DB_VERSION);
-        
-        request.onerror = (event) => {
-            console.error("Database error:", request.error);
-            
-            // If error is about version being too low, try to recover
-            if (request.error && request.error.name === 'VersionError') {
-                // Try to delete and recreate
-                deleteDatabase().then(() => {
-                    // Try again with a higher version
-                    CURRENT_DB_VERSION += 1;
-                    const newRequest = indexedDB.open(DB_NAME, CURRENT_DB_VERSION);
-                    
-                    newRequest.onupgradeneeded = (e) => {
-                        console.log(`Performing upgrade to version ${CURRENT_DB_VERSION} after reset`);
-                        createStores(newRequest.result);
-                    };
-                    
-                    newRequest.onsuccess = () => {
-                        console.log(`Database successfully reopened with version ${CURRENT_DB_VERSION}`);
-                        resolve(newRequest.result);
-                    };
-                    
-                    newRequest.onerror = () => {
-                        console.error("Failed to recreate database:", newRequest.error);
-                        reject(newRequest.error);
-                    };
-                }).catch(reject);
-            } else {
-                reject(request.error);
-            }
-        };
-        
-        request.onsuccess = (event) => {
-            console.log(`Database opened successfully with version ${CURRENT_DB_VERSION}`);
-            const db = request.result;
-            
-            // Vérifier si tous les stores existent
-            if (checkStoresExist(db)) {
-                resolve(db);
-            } else {
-                // Fermer la connexion et réessayer avec une version incrémentée
-                db.close();
-                
-                console.warn("Missing stores detected, will try with increased version");
-                
-                // Incrémenter la version pour forcer une mise à niveau
-                CURRENT_DB_VERSION++;
-                
-                if (CURRENT_DB_VERSION > DB_VERSION + 3) {
-                    reject(new Error("Failed to create database schema after multiple version attempts"));
-                    return;
-                }
-                
-                // Supprimer la base et réessayer avec la nouvelle version
-                deleteDatabase().then(() => {
-                    console.log(`Deleted database, will reopen with version ${CURRENT_DB_VERSION}`);
-                    
-                    // Nouvel appel d'ouverture sans récursion
-                    const newRequest = indexedDB.open(DB_NAME, CURRENT_DB_VERSION);
-                    
-                    newRequest.onerror = () => reject(newRequest.error);
-                    
-                    newRequest.onupgradeneeded = (e) => {
-                        console.log(`Performing upgrade to version ${CURRENT_DB_VERSION}`);
-                        createStores(newRequest.result);
-                    };
-                    
-                    newRequest.onsuccess = () => {
-                        console.log(`Database successfully opened with version ${CURRENT_DB_VERSION}`);
-                        resolve(newRequest.result);
-                    };
-                }).catch(reject);
-            }
-        };
-        
-        request.onupgradeneeded = (event) => {
-            console.log(`Database upgrade needed. Old version: ${event.oldVersion}, New version: ${CURRENT_DB_VERSION}`);
-            createStores(request.result);
-        };
-    });
-};
-
-/**
- * Helper function to create stores
- */
-const createStores = (db: IDBDatabase): void => {
-    STORES_CONFIG.forEach(store => {
-        if (!db.objectStoreNames.contains(store.name)) {
-            console.log(`Creating ${store.name} store`);
-            const storeOptions: IDBObjectStoreParameters = {
-                keyPath: store.keyPath
-            };
-            
-            if (store.autoIncrement) {
-                storeOptions.autoIncrement = true;
-            }
-            
-            const objectStore = db.createObjectStore(store.name, storeOptions);
-            
-            if (store.indexes) {
-                store.indexes.forEach(index => {
-                    objectStore.createIndex(index.name, index.keyPath, index.options);
-                });
-            }
-        }
-    });
-    
-    console.log("Database upgrade completed");
-};
-
-/**
- * Fonction simplifiée pour s'assurer que la base de données est correctement initialisée
- */
-const ensureDatabaseInitialized = async (): Promise<IDBDatabase> => {
-    try {
-        return await initDatabase();
-    } catch (error) {
-        // Une seule tentative de récupération en cas d'erreur
-        console.error("Error initializing database, attempting one reset:", error);
-        await deleteDatabase();
-        
-        // Réinitialiser la version pour repartir de zéro
-        CURRENT_DB_VERSION = DB_VERSION;
-        return await initDatabase();
-    }
-};
-
-
-/**
- * Exécuter une transaction sur un object store
- */
-const executeTransaction = <T>(
-    storeName: string,
-    mode: IDBTransactionMode,
-    callback: (store: IDBObjectStore) => IDBRequest<T>
-): Promise<T> => {
-    return new Promise(async (resolve, reject) => {
-        try {
-            const db = await ensureDatabaseInitialized();
-            
-            // Vérification supplémentaire que le store existe
-            if (!db.objectStoreNames.contains(storeName)) {
-                reject(new Error(`Object store '${storeName}' does not exist in the database`));
-                db.close();
-                return;
-            }
-            
-            const transaction = db.transaction(storeName, mode);
-            const store = transaction.objectStore(storeName);
-
-            const request = callback(store);
-
-            request.onsuccess = () => {
-                resolve(request.result);
-            };
-
-            request.onerror = () => {
-                console.error(`Error in transaction for ${storeName}:`, request.error);
-                reject(request.error);
-            };
-
-            // Fermer la connexion une fois la transaction terminée
-            transaction.oncomplete = () => {
-                db.close();
-            };
-
-            transaction.onerror = () => {
-                console.error(`Transaction error for ${storeName}:`, transaction.error);
-                db.close();
-                reject(transaction.error);
-            };
-        } catch (error) {
-            console.error(`Error in executeTransaction for ${storeName}:`, error);
-            reject(error);
-        }
-    });
-};
-
-/**
- * Ajouter un élément à un object store
+ * Add an item to the database
  */
 const addItem = async <T extends { id?: string | number }>(storeName: string, item: T): Promise<T> => {
-    return executeTransaction<T>(storeName, 'readwrite', (store) => {
-        return store.add(item);
+    return dbConnectionManager.execute(storeName, 'readwrite', async (store) => {
+        return new Promise((resolve, reject) => {
+            const request = store.add(item);
+            
+            request.onsuccess = () => {
+                resolve(item);
+            };
+            
+            request.onerror = () => {
+                reject(request.error);
+            };
+        });
     });
 };
 
 /**
- * Mettre à jour un élément dans un object store
+ * Update an item in the database
  */
 const updateItem = async <T extends { id: string | number }>(storeName: string, item: T): Promise<T> => {
-    return executeTransaction<T>(storeName, 'readwrite', (store) => {
-        return store.put(item);
+    return dbConnectionManager.execute(storeName, 'readwrite', async (store) => {
+        return new Promise((resolve, reject) => {
+            const request = store.put(item);
+            
+            request.onsuccess = () => {
+                resolve(item);
+            };
+            
+            request.onerror = () => {
+                reject(request.error);
+            };
+        });
     });
 };
 
 /**
- * Récupérer un élément par son ID
+ * Get an item by ID
  */
 const getItemById = async <T>(storeName: string, id: string | number): Promise<T | null> => {
-    return executeTransaction<T>(storeName, 'readonly', (store) => {
-        return store.get(id);
+    return dbConnectionManager.execute(storeName, 'readonly', async (store) => {
+        return new Promise((resolve, reject) => {
+            const request = store.get(id);
+            
+            request.onsuccess = () => {
+                resolve(request.result || null);
+            };
+            
+            request.onerror = () => {
+                reject(request.error);
+            };
+        });
     });
 };
 
 /**
- * Alias pour getItemById pour maintenir la compatibilité avec le code existant
+ * Alias for getItemById
  */
 const get = getItemById;
 
 /**
- * Supprimer un élément par son ID
+ * Delete an item from the database
  */
 const deleteItem = async (storeName: string, id: string | number): Promise<boolean> => {
     try {
-        await executeTransaction<void>(storeName, 'readwrite', (store) => {
-            return store.delete(id);
+        await dbConnectionManager.execute(storeName, 'readwrite', async (store) => {
+            return new Promise((resolve, reject) => {
+                const request = store.delete(id);
+                
+                request.onsuccess = () => {
+                    resolve(true);
+                };
+                
+                request.onerror = () => {
+                    reject(request.error);
+                };
+            });
         });
         return true;
     } catch (error) {
@@ -490,102 +321,78 @@ const deleteItem = async (storeName: string, id: string | number): Promise<boole
 };
 
 /**
- * Récupérer tous les éléments d'un object store
+ * Get all items from a store
  */
 const getAllItems = async <T>(storeName: string, options: QueryOptions = {}): Promise<T[]> => {
-    return new Promise(async (resolve, reject) => {
-        try {
-            const db = await ensureDatabaseInitialized();
-            const transaction = db.transaction(storeName, 'readonly');
-            const store = transaction.objectStore(storeName);
-
+    return dbConnectionManager.execute(storeName, 'readonly', async (store) => {
+        return new Promise((resolve, reject) => {
             const request = store.getAll();
-
+            
             request.onsuccess = () => {
                 let result = request.result;
-
-                // Appliquer la pagination si des options sont fournies
+                
+                // Apply pagination if options are provided
                 if (options.offset !== undefined || options.limit !== undefined) {
                     const offset = options.offset || 0;
                     const limit = options.limit || result.length;
                     result = result.slice(offset, offset + limit);
                 }
-
+                
                 resolve(result);
             };
-
+            
             request.onerror = () => {
-                console.error(`Error getting all items from ${storeName}:`, request.error);
                 reject(request.error);
             };
-
-            transaction.oncomplete = () => {
-                db.close();
-            };
-
-            transaction.onerror = () => {
-                console.error(`Transaction error for ${storeName}:`, transaction.error);
-                db.close();
-                reject(transaction.error);
-            };
-        } catch (error) {
-            console.error(`Error in getAllItems for ${storeName}:`, error);
-            reject(error);
-        }
+        });
     });
 };
 
 /**
- * Alias pour getAllItems pour maintenir la compatibilité avec le code existant
+ * Alias for getAllItems
  */
 const getAll = getAllItems;
 
 /**
- * Fonction pour récupérer les éléments par statut
+ * Get items by status
  */
 const getByStatus = async <T>(storeName: string, status: string): Promise<T[]> => {
     return getByIndex(storeName, 'status', status);
 };
 
 /**
- * Fonction pour récupérer les éléments par userId
+ * Get items by user ID
  */
 const getByUserId = async <T>(storeName: string, userId: string): Promise<T[]> => {
     return getByIndex(storeName, 'userId', userId);
 };
 
 /**
- * Récupérer des éléments par un index
+ * Get items by index
  */
-// Modifiez la fonction getByIndex dans db.service.ts pour mieux gérer les booléens:
 const getByIndex = async <T>(
     storeName: string,
     indexName: string,
     value: any,
     options: QueryOptions = {}
 ): Promise<T[]> => {
-    return new Promise(async (resolve, reject) => {
-        try {
-            const db = await ensureDatabaseInitialized();
-            const transaction = db.transaction(storeName, 'readonly');
-            const store = transaction.objectStore(storeName);
-
+    return dbConnectionManager.execute(storeName, 'readonly', async (store) => {
+        return new Promise((resolve, reject) => {
             if (!store.indexNames.contains(indexName)) {
-                reject(`Index '${indexName}' does not exist on store '${storeName}'`);
+                reject(new Error(`Index '${indexName}' does not exist on store '${storeName}'`));
                 return;
             }
-
+            
             const index = store.index(indexName);
             
-            // Si nous recherchons par valeur booléenne, nous utilisons une autre approche
+            // For boolean values, we need to filter manually
             if (typeof value === 'boolean') {
-                // Récupérer tous les éléments et filtrer manuellement
                 const allRequest = store.getAll();
                 
                 allRequest.onsuccess = () => {
                     const result = allRequest.result.filter(item => item[indexName] === value);
                     
-                    // Appliquer la pagination si des options sont fournies
+                    // Apply pagination if options are provided
                     if (options.offset !== undefined || options.limit !== undefined) {
                         const offset = options.offset || 0;
                         const limit = options.limit || result.length;
@@ -596,97 +403,64 @@ const getByIndex = async <T>(
                 };
                 
                 allRequest.onerror = () => {
-                    console.error(`Error getting items by boolean index from ${storeName}:`, allRequest.error);
                     reject(allRequest.error);
                 };
             } else {
-                // Pour les autres types, utiliser getAll comme avant
+                // For other values, use the index directly
                 const request = index.getAll(value);
-
+                
                 request.onsuccess = () => {
                     let result = request.result;
-
-                    // Appliquer la pagination si des options sont fournies
+                    
+                    // Apply pagination if options are provided
                     if (options.offset !== undefined || options.limit !== undefined) {
                         const offset = options.offset || 0;
                         const limit = options.limit || result.length;
                         result = result.slice(offset, offset + limit);
                     }
-
+                    
                     resolve(result);
                 };
-
+                
                 request.onerror = () => {
-                    console.error(`Error getting items by index from ${storeName}:`, request.error);
                     reject(request.error);
                 };
             }
-
-            transaction.oncomplete = () => {
-                db.close();
-            };
-
-            transaction.onerror = () => {
-                console.error(`Transaction error for ${storeName}:`, transaction.error);
-                db.close();
-                reject(transaction.error);
-            };
-        } catch (error) {
-            console.error(`Error in getByIndex for ${storeName}:`, error);
-            reject(error);
-        }
+        });
     });
 };
 
 /**
- * Obtenir un seul élément par un index (renvoie le premier trouvé)
+ * Get one item by index
  */
 const getOneByIndex = async <T>(
     storeName: string,
     indexName: string,
     value: any
 ): Promise<T | null> => {
-    return new Promise(async (resolve, reject) => {
-        try {
-            const db = await ensureDatabaseInitialized();
-            const transaction = db.transaction(storeName, 'readonly');
-            const store = transaction.objectStore(storeName);
-
+    return dbConnectionManager.execute(storeName, 'readonly', async (store) => {
+        return new Promise((resolve, reject) => {
             if (!store.indexNames.contains(indexName)) {
-                reject(`Index '${indexName}' does not exist on store '${storeName}'`);
+                reject(new Error(`Index '${indexName}' does not exist on store '${storeName}'`));
                 return;
             }
-
+            
             const index = store.index(indexName);
             const request = index.get(value);
-
+            
             request.onsuccess = () => {
                 resolve(request.result || null);
             };
-
+            
             request.onerror = () => {
-                console.error(`Error getting one item by index from ${storeName}:`, request.error);
                 reject(request.error);
             };
-
-            transaction.oncomplete = () => {
-                db.close();
-            };
-
-            transaction.onerror = () => {
-                console.error(`Transaction error for ${storeName}:`, transaction.error);
-                db.close();
-                reject(transaction.error);
-            };
-        } catch (error) {
-            console.error(`Error in getOneByIndex for ${storeName}:`, error);
-            reject(error);
-        }
+        });
     });
 };
 
 /**
- * Effectuer une recherche sur un champ spécifique
+ * Search for items by field
  */
 const searchByField = async <T>(
     storeName: string,
@@ -694,43 +468,51 @@ const searchByField = async <T>(
     searchTerm: string,
     options: QueryOptions = {}
 ): Promise<T[]> => {
-    return new Promise(async (resolve, reject) => {
-        try {
-            const allItems = await getAllItems<T>(storeName);
-
-            // Filtrer les éléments qui correspondent au terme de recherche
-            const searchResults = allItems.filter(item => {
-                const fieldValue = (item as any)[field];
-
-                if (typeof fieldValue === 'string') {
-                    return fieldValue.toLowerCase().includes(searchTerm.toLowerCase());
-                }
-
-                return false;
-            });
-
-            // Appliquer la pagination si des options sont fournies
-            if (options.offset !== undefined || options.limit !== undefined) {
-                const offset = options.offset || 0;
-                const limit = options.limit || searchResults.length;
-                resolve(searchResults.slice(offset, offset + limit));
-            } else {
-                resolve(searchResults);
+    try {
+        const allItems = await getAllItems<T>(storeName);
+        
+        // Filter items that match the search term
+        const searchResults = allItems.filter(item => {
+            const fieldValue = (item as any)[field];
+            
+            if (typeof fieldValue === 'string') {
+                return fieldValue.toLowerCase().includes(searchTerm.toLowerCase());
             }
-        } catch (error) {
-            console.error(`Error in searchByField for ${storeName}:`, error);
-            reject(error);
+            
+            return false;
+        });
+        
+        // Apply pagination if options are provided
+        if (options.offset !== undefined || options.limit !== undefined) {
+            const offset = options.offset || 0;
+            const limit = options.limit || searchResults.length;
+            return searchResults.slice(offset, offset + limit);
+        } else {
+            return searchResults;
         }
-    });
+    } catch (error) {
+        console.error(`Error in searchByField for ${storeName}:`, error);
+        throw error;
+    }
 };
 
 /**
- * Vider un object store
+ * Clear a store
  */
 const clearStore = async (storeName: string): Promise<boolean> => {
     try {
-        await executeTransaction<void>(storeName, 'readwrite', (store) => {
-            return store.clear();
+        await dbConnectionManager.execute(storeName, 'readwrite', async (store) => {
+            return new Promise((resolve, reject) => {
+                const request = store.clear();
+                
+                request.onsuccess = () => {
+                    resolve(true);
+                };
+                
+                request.onerror = () => {
+                    reject(request.error);
+                };
+            });
         });
         return true;
     } catch (error) {
@@ -740,7 +522,7 @@ const clearStore = async (storeName: string): Promise<boolean> => {
 };
 
 /**
- * Vérifier si un élément existe dans un store
+ * Check if an item exists
  */
 const itemExists = async (storeName: string, id: string | number): Promise<boolean> => {
     const item = await getItemById(storeName, id);
@@ -748,23 +530,31 @@ const itemExists = async (storeName: string, id: string | number): Promise<boole
 };
 
 /**
- * Compter le nombre d'éléments dans un store
+ * Count items in a store
  */
 const countItems = async (storeName: string): Promise<number> => {
-    return executeTransaction<number>(storeName, 'readonly', (store) => {
-        return store.count();
+    return dbConnectionManager.execute(storeName, 'readonly', async (store) => {
+        return new Promise((resolve, reject) => {
+            const request = store.count();
+            
+            request.onsuccess = () => {
+                resolve(request.result);
+            };
+            
+            request.onerror = () => {
+                reject(request.error);
+            };
+        });
     });
 };
 
 /**
- * Vérifier si un object store existe
+ * Check if a store exists
  */
 const storeExists = async (storeName: string): Promise<boolean> => {
     try {
-        const db = await initDatabase();
-        const exists = db.objectStoreNames.contains(storeName);
-        db.close();
-        return exists;
+        const db = await dbConnectionManager.getConnection();
+        return db.objectStoreNames.contains(storeName);
     } catch (error) {
         console.error(`Error checking if store ${storeName} exists:`, error);
         return false;
@@ -772,7 +562,7 @@ const storeExists = async (storeName: string): Promise<boolean> => {
 };
 
 /**
- * Récupérer les codes promo actifs
+ * Get active promo codes
  */
 const getActivePromoCodes = async <T>(): Promise<T[]> => {
     try {
@@ -783,8 +573,13 @@ const getActivePromoCodes = async <T>(): Promise<T[]> => {
     }
 };
 
+// Initialize the database on module load
+initDatabase().catch(error => {
+    console.error("Error initializing database on startup:", error);
+});
+
 /**
- * Exporter les fonctions du service
+ * Export the database service
  */
 export const dbService = {
     initDatabase,

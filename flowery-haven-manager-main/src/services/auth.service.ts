@@ -64,11 +64,22 @@ const register = async (userData: Omit<User, 'id' | 'role' | 'createdAt'>): Prom
 };
 
 // Connexion utilisateur
-// Connexion utilisateur
 const login = async (email: string, password: string): Promise<Omit<User, 'password'>> => {
     try {
-        // Simulation de login admin pour faciliter les tests
+        // Simulation de login admin mais AVEC vérification du mot de passe
         if (email === "admin@admin.com") {
+            // Exiger un mot de passe pour l'admin aussi
+            if (password !== "admin123") { // Définissez ici le mot de passe admin que vous souhaitez
+                // Enregistrer cette tentative de connexion échouée
+                if (typeof loginHistoryService !== 'undefined') {
+                    await loginHistoryService.recordFailedLogin(
+                        email, 
+                        "Mot de passe incorrect"
+                    );
+                }
+                throw new Error("Mot de passe incorrect");
+            }
+            
             const adminUser = {
                 id: "admin_1",
                 email: "admin@admin.com",
@@ -92,21 +103,33 @@ const login = async (email: string, password: string): Promise<Omit<User, 'passw
         // Pour un utilisateur normal, vérifier dans la base de données
         const users = await dbService.getByIndex<User>("users", "email", email);
 
-        if (!users || users.length === 0 || users[0].password !== password) {
+        // Vérifier d'abord si l'utilisateur existe
+        if (!users || users.length === 0) {
             // Enregistrer cette tentative de connexion échouée
             if (typeof loginHistoryService !== 'undefined') {
                 await loginHistoryService.recordFailedLogin(
                     email, 
-                    !users || users.length === 0 
-                        ? "Email inconnu" 
-                        : "Mot de passe incorrect"
+                    "Utilisateur inexistant"
                 );
             }
-            throw new Error("Email ou mot de passe incorrect");
+            throw new Error("Cet utilisateur n'existe pas");
+        }
+
+        // Ensuite vérifier si le mot de passe est correct
+        if (users[0].password !== password) {
+            // Enregistrer cette tentative de connexion échouée
+            if (typeof loginHistoryService !== 'undefined') {
+                await loginHistoryService.recordFailedLogin(
+                    email, 
+                    "Mot de passe incorrect"
+                );
+            }
+            throw new Error("Mot de passe incorrect");
         }
 
         const user = users[0];
 
+        // Le reste du code reste inchangé...
         // Vérifier si l'authentification à deux facteurs est activée
         if (user.twoFactorEnabled) {
             // Ne pas connecter tout de suite, stocker l'ID pour la vérification 2FA
@@ -431,7 +454,7 @@ const updateUserProfile = async (updates: ProfileUpdate): Promise<Omit<User, 'pa
         // Mettre à jour la session
         const { password, resetToken, resetTokenExpiry, twoFactorSecret, ...sessionUser } = updatedUser;
         localStorage.setItem("user", JSON.stringify(sessionUser));
-        
+
         // Émettre un événement pour notifier les autres composants des changements
         window.dispatchEvent(new Event('storage'));
 

@@ -16,6 +16,10 @@ import {
   X,
   LogOut,
   Home,
+  Layout,
+  FileType,
+  PanelLeft,
+  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -104,6 +108,34 @@ const AdminLayout = () => {
           label: "Statistiques",
           icon: <BarChart2 className="h-4 w-4" />,
           path: "/admin/blog/statistics"
+        }
+      ]
+    },
+    {
+      label: "Gestion de contenu",
+      icon: <Layout className="h-5 w-5" />,
+      path: "/admin/cms",
+      expanded: false,
+      children: [
+        {
+          label: "Pages",
+          icon: <FileText className="h-4 w-4" />,
+          path: "/admin/cms"
+        },
+        {
+          label: "Composants",
+          icon: <FileType className="h-4 w-4" />,
+          path: "/admin/cms/components"
+        },
+        {
+          label: "Pages spéciales",
+          icon: <AlertTriangle className="h-4 w-4" />,
+          path: "/admin/cms/special"
+        },
+        {
+          label: "Modèles",
+          icon: <PanelLeft className="h-4 w-4" />,
+          path: "/admin/cms/templates"
         }
       ]
     },

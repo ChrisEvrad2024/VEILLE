@@ -27,8 +27,6 @@ import ProductDetail from "./pages/ProductDetail";
 import Cart from "./pages/Cart";
 import Wishlist from "./pages/Wishlist";
 import BlogPost from "./pages/BlogPost";
-// import BlogCategory from "./pages/BlogCategory";
-// import BlogTag from "./pages/BlogTag";
 import Contact from "./pages/Contact";
 import About from "./pages/About";
 
@@ -41,7 +39,6 @@ import Blog from "./pages/Blog";
 import BlogPostDetail from "./pages/BlogPostDetail";
 
 // Admin Media Pages
-// import AdminMedia from "./pages/admin/media/MediaLibrary";
 import AdminMediaUpload from "./pages/admin/media/MediaUpload";
 
 // Account Pages
@@ -65,6 +62,14 @@ import OrderDetail from "./pages/account/OrderDetail";
 import QuoteRequest from "./pages/QuoteRequest";
 import QuoteHistory from "./pages/account/QuoteHistory";
 import QuoteDetail from "./pages/account/QuoteDetail";
+
+// Import CMS
+import CMSLayout from "./components/layout/CMSLayout";
+import CMSDashboard from "./pages/admin/cms/CMSDashboard";
+import PageEditor from "./pages/admin/cms/PageEditor";
+import ComponentManager from "./pages/admin/cms/ComponentManager";
+import SpecialPages from "./pages/admin/cms/SpecialPages";
+import TemplateManager from "./pages/admin/cms/TemplateManager";
 
 // Import Admin Order Management
 import OrdersManagement from "./pages/admin/OrdersManagement";
@@ -151,6 +156,16 @@ const App = () => {
                 <Route path="blog/comments" element={<CommentModeration />} />
                 <Route path="blog/scheduler" element={<BlogScheduler />} />
                 <Route path="blog/statistics" element={<BlogStatistics />} />
+
+                {/* Admin CMS Management */}
+                <Route path="cms" element={<CMSLayout />}>
+                  <Route index element={<CMSDashboard />} />
+                  <Route path="new" element={<PageEditor />} />
+                  <Route path=":id/edit" element={<PageEditor />} />
+                  <Route path="components" element={<ComponentManager />} />
+                  <Route path="special" element={<SpecialPages />} />
+                  <Route path="templates" element={<TemplateManager />} />
+                </Route>
 
                 {/* Admin Media Management */}
                 {/* <Route path="media" element={<AdminMedia />} /> */}

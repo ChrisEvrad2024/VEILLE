@@ -9,6 +9,7 @@ import { UserRole } from './user-management.service';
 
 // Données de démo pour les produits
 const sampleProducts: Product[] = [
+    // Your sample products would go here
 ];
 
 // Données de démo pour les catégories
@@ -27,7 +28,7 @@ const sampleCategories: Category[] = [
 
 // Données de démo pour les articles de blog
 const sampleBlogPosts: BlogPost[] = [
-    
+    // Your sample blog posts would go here
 ];
 
 // Données de démo pour les utilisateurs
@@ -59,7 +60,6 @@ const sampleUsers: User[] = [
         role: "super_admin",
         createdAt: new Date("2023-01-01")
     }
-    
 ];
 
 // Données de démo pour les méthodes de paiement
@@ -173,6 +173,72 @@ const sampleCmsPages: PageContent[] = [
     }
 ];
 
+// Sample data for CMS revisions
+const sampleCmsRevisions = [
+    {
+        id: "revision_1",
+        pageId: "page_1",
+        revisionNumber: 1,
+        title: "Accueil",
+        content: "<h1>Bienvenue chez Flora</h1><p>Version initiale</p>",
+        createdAt: new Date(),
+        createdBy: "admin_1"
+    }
+];
+
+// Sample data for CMS components
+const sampleCmsComponents = [
+    {
+        id: "component_1",
+        name: "Banner principal",
+        type: "banner",
+        content: {
+            title: "Bienvenue chez Flora",
+            subtitle: "Des fleurs fraîches pour toutes les occasions",
+            buttonText: "Découvrir",
+            buttonLink: "/boutique",
+            image: "/assets/images/banner.jpg"
+        },
+        settings: {
+            fullWidth: true,
+            height: "large",
+            textColor: "#ffffff"
+        },
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        createdBy: "admin_1",
+        updatedBy: "admin_1"
+    }
+];
+
+// Sample data for CMS templates
+const sampleCmsTemplates = [
+    {
+        id: "template_1",
+        name: "Page standard",
+        description: "Template pour les pages de contenu standard",
+        structure: [
+            {
+                name: "En-tête",
+                type: "section",
+            },
+            {
+                name: "Zone de contenu principal",
+                type: "component",
+                allowedComponents: ["text", "image", "video"]
+            },
+            {
+                name: "Pied de page",
+                type: "section",
+            }
+        ],
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date()
+    }
+];
+
 // Données de démo pour les rôles utilisateurs
 const sampleUserRoles: UserRole[] = [
     {
@@ -215,81 +281,114 @@ const sampleUserRoles: UserRole[] = [
     }
 ];
 
-// Fonction d'initialisation complète
-const initializeDatabase = async (): Promise<void> => {
+// Track initialization status
+let isInitialized = false;
+let initPromise: Promise<void> | null = null;
+
+// Check if data already exists in the database
+const checkIfDataExists = async (): Promise<boolean> => {
     try {
-        // Initialiser la base de données
-        await dbService.initDatabase();
-
-        // Vérifier si les données de démo existent déjà
-        const existingProducts = await dbService.getAllItems<Product>("products");
-
-        if (existingProducts.length === 0) {
-            console.log("Initializing database with sample data...");
-
-            // Ajouter les catégories
-            for (const category of sampleCategories) {
-                await dbService.addItem("categories", category);
-            }
-
-            // Ajouter les produits
-            for (const product of sampleProducts) {
-                await dbService.addItem("products", product);
-            }
-
-            // Ajouter les articles de blog
-            for (const post of sampleBlogPosts) {
-                await dbService.addItem("blog", post);
-            }
-
-            // Ajouter les utilisateurs
-            for (const user of sampleUsers) {
-                await dbService.addItem("users", user);
-            }
-
-            // Ajouter les méthodes de paiement
-            for (const method of samplePaymentMethods) {
-                await dbService.addItem("paymentMethods", method);
-            }
-
-            // Ajouter les pages CMS
-            for (const page of sampleCmsPages) {
-                await dbService.addItem("cmsPages", page);
-            }
-
-            // Ajouter les rôles utilisateurs
-            for (const role of sampleUserRoles) {
-                await dbService.addItem("userRoles", role);
-            }
-
-            // Créer les stores supplémentaires pour les autres services
-            const additionalStores = [
-                "addresses", "cart", "wishlist", "orders", "quoteRequests", "quoteProposals",
-                "promoCodes", "promotions", "newsletterSubscribers", "newsletterCampaigns",
-                "cmsRevisions", "cmsComponents", "cmsTemplates", "productReviews", 
-                "reviewVotes", "adminActions", "analyticsPageViews", "analyticsProductViews",
-                "analyticsCartActions", "analyticsSearches", "analyticsSessions"
-            ];
-
-            for (const store of additionalStores) {
-                try {
-                    // Vérification que le store existe déjà ou création si nécessaire
-                    const testItem = { id: `test_${Date.now()}`, testField: true };
-                    await dbService.addItem(store, testItem);
-                    await dbService.deleteItem(store, testItem.id);
-                } catch (error) {
-                    console.warn(`Store ${store} initialization failed:`, error);
-                }
-            }
-
-            console.log("Database initialized with sample data!");
-        } else {
-            console.log("Database already contains data. Skipping initialization.");
-        }
+        // Check if any users exist as a way to determine if data has been initialized
+        const users = await dbService.getAllItems<User>("users");
+        return users.length > 0;
     } catch (error) {
-        console.error("Error initializing database:", error);
+        console.error("Error checking if data exists:", error);
+        return false;
+    }
+};
+
+// Initialize a specific collection with sample data
+const initializeCollection = async <T>(
+    collectionName: string, 
+    sampleData: T[], 
+    checkExisting: boolean = true
+): Promise<void> => {
+    try {
+        // Check if data already exists if required
+        if (checkExisting) {
+            const existingItems = await dbService.getAllItems(collectionName);
+            if (existingItems.length > 0) {
+                console.log(`Collection ${collectionName} already has data, skipping initialization`);
+                return;
+            }
+        }
+        
+        console.log(`Initializing ${collectionName} with ${sampleData.length} items`);
+        
+        // Add each item with a small delay to avoid database contention
+        for (const item of sampleData) {
+            await dbService.addItem(collectionName, item);
+            // Small delay to avoid overwhelming the database
+            await new Promise(resolve => setTimeout(resolve, 10));
+        }
+        
+        console.log(`${collectionName} initialization complete`);
+    } catch (error) {
+        console.error(`Error initializing ${collectionName}:`, error);
         throw error;
     }
+};
+
+// Fonction d'initialisation complète
+const initializeDatabase = async (): Promise<void> => {
+    // Prevent multiple simultaneous initializations
+    if (initPromise) {
+        return initPromise;
+    }
+    
+    // Create a promise for initialization
+    initPromise = (async () => {
+        if (isInitialized) {
+            return;
+        }
+        
+        try {
+            console.log("Starting database initialization...");
+            
+            // Make sure database is initialized first
+            await dbService.ensureDatabaseInitialized();
+            
+            // Check if data already exists to avoid duplication
+            const existingUserCheck = await checkIfDataExists();
+            
+            if (!existingUserCheck) {
+                console.log("Initializing database with sample data...");
+
+                // Initialize collections in sequence to avoid database contention
+                
+                // Start with users and roles
+                await initializeCollection("users", sampleUsers);
+                await initializeCollection("userRoles", sampleUserRoles);
+                
+                // Then initialize CMS related collections
+                await initializeCollection("cmsTemplates", sampleCmsTemplates);
+                await initializeCollection("cmsPages", sampleCmsPages);
+                await initializeCollection("cmsRevisions", sampleCmsRevisions);
+                await initializeCollection("cmsComponents", sampleCmsComponents);
+                
+                // Then initialize product related collections
+                await initializeCollection("categories", sampleCategories);
+                await initializeCollection("products", sampleProducts);
+                
+                // Finally initialize other collections
+                await initializeCollection("blog", sampleBlogPosts);
+                await initializeCollection("paymentMethods", samplePaymentMethods);
+
+                console.log("Database initialized with sample data!");
+            } else {
+                console.log("Database already contains data. Skipping initialization.");
+            }
+            
+            isInitialized = true;
+        } catch (error) {
+            console.error("Error initializing database:", error);
+            // Reset initPromise so we can try again
+            initPromise = null;
+            throw error;
+        }
+    })();
+    
+    return initPromise;
 };
 
 // Fonctions de mise à jour et maintenance
@@ -308,9 +407,15 @@ const clearDatabase = async (): Promise<void> => {
                 "analyticsCartActions", "analyticsSearches", "analyticsSessions"
             ];
             
+            // Clear stores in sequence
             for (const store of stores) {
                 await dbService.clearStore(store);
+                await new Promise(resolve => setTimeout(resolve, 100));
             }
+            
+            // Reset initialized flag
+            isInitialized = false;
+            initPromise = null;
             
             console.log("Database cleared successfully!");
         } catch (error) {
@@ -322,7 +427,26 @@ const clearDatabase = async (): Promise<void> => {
     }
 };
 
+// Application initialization function that should be called at app startup
+const initializeApplication = async (): Promise<void> => {
+    try {
+        console.log("Starting application initialization...");
+        
+        // First ensure the database structure is initialized
+        await dbService.ensureDatabaseInitialized();
+        
+        // Then load sample data if needed
+        await initializeDatabase();
+        
+        console.log("Application initialization complete!");
+    } catch (error) {
+        console.error("Error during application initialization:", error);
+        throw error;
+    }
+};
+
 export const initService = {
     initializeDatabase,
-    clearDatabase
+    clearDatabase,
+    initializeApplication
 };

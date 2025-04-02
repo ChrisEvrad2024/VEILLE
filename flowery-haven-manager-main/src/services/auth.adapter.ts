@@ -28,6 +28,7 @@ const login = async (email: string, password: string): Promise<Omit<User, 'passw
             redirectTo: redirectPath
         };
     } catch (error) {
+        // Transmettre le message d'erreur exact au lieu de préfixer avec "Échec de connexion"
         const message = error instanceof Error ? error.message : 'Erreur lors de la connexion';
 
         // Special handling for 2FA if needed
@@ -35,7 +36,8 @@ const login = async (email: string, password: string): Promise<Omit<User, 'passw
             throw new Error('2FA_REQUIRED');
         }
 
-        throw new Error(`Échec de connexion: ${message}`);
+        // Préserver le message d'erreur original
+        throw new Error(message);
     }
 };
 
