@@ -793,8 +793,8 @@ const OrderDetail = () => {
                         <p className="text-xs text-muted-foreground mb-2">
                           Réponse sous 24h
                         </p>
-                        <a href="mailto:support@floralie.com" className="text-sm text-primary hover:underline">
-                          support@floralie.com
+                        <a href="mailto:support@ChezFLORA.com" className="text-sm text-primary hover:underline">
+                          support@ChezFLORA.com
                         </a>
                       </div>
                       

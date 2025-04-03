@@ -80,6 +80,8 @@ import AdminQuoteDetail from "./pages/admin/AdminQuoteDetail";
 import AdminOrderDetail from "./pages/admin/AdminOrderDetail";
 import QuotesManagement from "./pages/admin/QuotesManagement";
 
+
+import ComponentsTest from "./pages/ComponentsTest";
 const queryClient = new QueryClient();
 
 const App = () => {

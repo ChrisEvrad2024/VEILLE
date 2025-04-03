@@ -8,7 +8,7 @@
 
 // Configuration de la base de données
 const DB_NAME = 'chezFlora';
-const DB_VERSION = 14;
+const DB_VERSION = 15;
 
 // Operation queue state
 type OperationState = 'pending' | 'running' | 'completed' | 'failed';

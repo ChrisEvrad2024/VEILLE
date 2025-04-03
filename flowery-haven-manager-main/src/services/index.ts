@@ -14,11 +14,13 @@ import { newsletterService } from './newsletter.service';
 import { dashboardService } from './dashboard.service';
 import { paymentService } from './payment.service';
 import { cmsService } from './cms.service';
+import { cmsFrontendService } from './cms-frontend.service';
 import { analyticsService } from './analytics.service';
 import { ratingService } from './rating.service';
 import { userManagementService } from './user-management.service';
 import { loginHistoryService } from './login-history.service';
 import { imageService } from './image.service';
+import { cmsInitializer } from '@/utils/cms-initializer';
 
 import {
     cartAdapter,
@@ -46,6 +48,9 @@ const initialize = async () => {
         await paymentService.initDefaultPaymentMethods();
         await cmsService.initDefaultPages();
         await userManagementService.initDefaultRoles();
+        
+        // Initialiser le système CMS avancé avec les composants et promotions
+        await cmsInitializer.initializeAll();
         
         console.log("Database and services initialization complete!");
     } catch (error) {
@@ -82,6 +87,7 @@ export {
     // Services de contenu
     blogService,
     cmsService,
+    cmsFrontendService,  // Ajout de l'export du service frontend CMS
     
     // Services d'analyse
     dashboardService,

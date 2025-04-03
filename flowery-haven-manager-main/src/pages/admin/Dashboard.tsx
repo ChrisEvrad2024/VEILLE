@@ -179,7 +179,7 @@ const Dashboard = () => {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Tableau de bord</h1>
-        <p className="text-muted-foreground">Bienvenue {user?.firstName || 'Administrateur'}. Voici les statistiques de votre boutique Floralie.</p>
+        <p className="text-muted-foreground">Bienvenue {user?.firstName || 'Administrateur'}. Voici les statistiques de votre boutique ChezFLORA.</p>
       </div>
       
       {/* Key metrics row */}

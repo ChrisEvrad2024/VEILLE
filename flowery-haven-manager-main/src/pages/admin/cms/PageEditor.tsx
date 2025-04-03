@@ -46,6 +46,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -335,8 +336,16 @@ const PageEditor = () => {
     setSaveError(null);
     
     try {
+      console.log("Début de la sauvegarde de la page", isNewPage ? "nouvelle" : "existante");
+      
       if (isNewPage) {
         // Create new page
+        console.log("Création d'une nouvelle page avec:", {
+          title: page.title,
+          slug: page.slug,
+          content: page.content?.substring(0, 50) + "..." // Juste le début pour le log
+        });
+        
         const newPage = await cmsService.createPage(
           page.title!,
           page.slug!,
@@ -351,9 +360,16 @@ const PageEditor = () => {
           }
         );
         
+        console.log("Page créée avec succès, nouvel ID:", newPage?.id);
+        
+        if (!newPage || !newPage.id) {
+          throw new Error("Erreur: La page a été créée mais aucun ID n'a été retourné");
+        }
+        
         toast.success("Page créée avec succès");
         
         // Navigate to the edit page for the new page
+        console.log("Redirection vers:", `/admin/cms/${newPage.id}/edit`);
         navigate(`/admin/cms/${newPage.id}/edit`, { replace: true });
       } else {
         // Update existing page
@@ -380,14 +396,20 @@ const PageEditor = () => {
       }
     } catch (error) {
       console.error("Error saving page:", error);
-      toast.error("Erreur lors de l'enregistrement de la page");
       
+      // Détails supplémentaires sur l'erreur
       if (error instanceof Error) {
+        console.error("Error name:", error.name);
+        console.error("Error stack:", error.stack);
         setSaveError(error.message);
       } else {
-        setSaveError("Une erreur s'est produite");
+        console.error("Unknown error type:", typeof error);
+        setSaveError("Une erreur inconnue s'est produite");
       }
+      
+      toast.error("Erreur lors de l'enregistrement de la page");
     } finally {
+      console.log("Fin du processus de sauvegarde, réinitialisation de isSaving");
       setIsSaving(false);
     }
   };
@@ -708,6 +730,9 @@ const PageEditor = () => {
         <DialogContent className="sm:max-w-[80%] sm:max-h-[80vh] overflow-auto">
           <DialogHeader>
             <DialogTitle>Aperçu de la page</DialogTitle>
+            <DialogDescription>
+              Prévisualisation de votre contenu avant publication.
+            </DialogDescription>
           </DialogHeader>
           <div className="border rounded-md p-6 mt-4 prose prose-sm max-w-none">
             <Markdown content={page.content || ""} />
@@ -769,6 +794,9 @@ const PageEditor = () => {
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>Historique des révisions</DialogTitle>
+            <DialogDescription>
+              Consultez et restaurez les versions précédentes de cette page.
+            </DialogDescription>
           </DialogHeader>
           <div className="max-h-[50vh] overflow-y-auto">
             {revisions.length === 0 ? (

@@ -11,6 +11,7 @@ import VideoComponent from "./components/VideoComponent";
 // import FeaturedProductsComponent from "./components/FeaturedProductsComponent";
 // import TestimonialsComponent from "./components/TestimonialsComponent";
 import HtmlComponent from "./components/HtmlComponent";
+import PromotionComponent from "./components/PromotionComponent";
 
 // Définition du type pour les propriétés des composants
 export interface ComponentProps {
@@ -29,6 +30,7 @@ const componentMapping: Record<string, React.ComponentType<ComponentProps>> = {
 //   featured_products: FeaturedProductsComponent,
 //   testimonials: TestimonialsComponent,
   html: HtmlComponent,
+  promotion: PromotionComponent,
   // Ajoutez d'autres mappings selon vos besoins
 };
 

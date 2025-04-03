@@ -71,6 +71,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cmsInitializer } from "@/utils/cms-initializer";
 
 const CMSDashboard = () => {
   const navigate = useNavigate();
@@ -109,6 +110,31 @@ const CMSDashboard = () => {
       toast.error("Erreur lors du chargement des pages");
     } finally {
       setIsLoading(false);
+    }
+  };
+  
+  // Fonction d'initialisation de la page d'accueil
+  const handleInitHomePage = async () => {
+    try {
+      // Afficher un toast de chargement
+      const loadingToast = toast.loading("Initialisation de la page d'accueil...");
+      
+      // Appeler la fonction d'initialisation
+      const success = await cmsInitializer.initializeAll();
+      
+      // Fermer le toast de chargement
+      toast.dismiss(loadingToast);
+      
+      if (success) {
+        toast.success("Page d'accueil initialisée avec succès");
+        // Recharger les pages pour afficher les changements
+        loadPages();
+      } else {
+        toast.error("Échec de l'initialisation de la page d'accueil");
+      }
+    } catch (error) {
+      console.error("Erreur:", error);
+      toast.error("Une erreur est survenue");
     }
   };
 
@@ -352,6 +378,14 @@ const CMSDashboard = () => {
           <Button onClick={handleAddPage}>
             <Plus className="h-4 w-4 mr-2" />
             Nouvelle page
+          </Button>
+          <Button 
+            variant="outline"
+            onClick={handleInitHomePage}
+            title="Initialiser la page d'accueil avec des composants"
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Réinitialiser l'accueil
           </Button>
           <Button
             variant="outline"

@@ -532,10 +532,10 @@ const OrderConfirmation = () => {
                     Contactez notre service client
                   </p>
                   <a
-                    href="mailto:support@floralie.com"
+                    href="mailto:support@ChezFLORA.com"
                     className="text-sm text-primary hover:underline"
                   >
-                    support@floralie.com
+                    support@ChezFLORA.com
                   </a>
                 </div>
 

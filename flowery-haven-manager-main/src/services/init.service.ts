@@ -6,6 +6,7 @@ import { User } from './auth.service';
 import { PaymentMethod } from './payment.service';
 import { PageContent } from './cms.service';
 import { UserRole } from './user-management.service';
+import { cmsInitializer } from '@/utils/cms-initializer';
 
 // Données de démo pour les produits
 const sampleProducts: Product[] = [
@@ -437,6 +438,9 @@ const initializeApplication = async (): Promise<void> => {
         
         // Then load sample data if needed
         await initializeDatabase();
+        
+        // Initialize the CMS system with components and promotions
+        await cmsInitializer.initializeAll();
         
         console.log("Application initialization complete!");
     } catch (error) {

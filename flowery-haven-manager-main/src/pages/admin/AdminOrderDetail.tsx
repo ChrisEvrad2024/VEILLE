@@ -221,7 +221,7 @@ Nous vous contactons au sujet de votre commande #${orderId
 N'hésitez pas à nous contacter si vous avez des questions.
 
 Cordialement,
-L'équipe de Floralie`);
+L'équipe de ChezFLORA`);
       } catch (error) {
         console.error("Error loading order:", error);
         toast.error("Erreur lors du chargement de la commande");
@@ -1511,7 +1511,7 @@ Détails du suivi :
 Nous vous remercions pour votre commande et espérons qu'elle vous apportera entière satisfaction.
 
 Cordialement,
-L'équipe de Floralie`);
+L'équipe de ChezFLORA`);
                         }}
                       >
                         Confirmation d'expédition
@@ -1542,7 +1542,7 @@ Nous souhaitons vous informer d'une mise à jour concernant votre commande #${or
 Nous nous excusons pour tout inconvénient que cela pourrait causer et restons à votre disposition pour toute question.
 
 Cordialement,
-L'équipe de Floralie`);
+L'équipe de ChezFLORA`);
                         }}
                       >
                         Notification de problème
@@ -1569,7 +1569,7 @@ Nous sommes heureux de vous informer que votre commande #${order.id
 Nous espérons que vous êtes satisfait(e) de votre achat. Votre avis est important pour nous, n'hésitez pas à nous faire part de vos commentaires.
 
 Merci de votre confiance,
-L'équipe de Floralie`);
+L'équipe de ChezFLORA`);
                         }}
                       >
                         Confirmation de livraison

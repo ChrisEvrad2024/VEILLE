@@ -1,5 +1,6 @@
 // src/services/cms-frontend.service.ts
 import { cmsService, PageContent, CMSComponent } from './cms.service';
+import { promotionService } from './promotion.service';
 
 /**
  * Service pour gérer l'accès au CMS depuis le frontend
@@ -81,6 +82,11 @@ export const cmsFrontendService = {
                 return null;
             }
 
+            // Si c'est un composant de promotion, enrichir avec les données réelles
+            if (component.type === 'promotion') {
+                await cmsFrontendService.enrichPromotionComponent(component);
+            }
+
             // Combine les données par défaut du composant avec les données spécifiques
             return {
                 type: component.type,
@@ -90,6 +96,148 @@ export const cmsFrontendService = {
         } catch (error) {
             console.error(`Erreur lors de la récupération des données du composant ${componentId}:`, error);
             return null;
+        }
+    },
+
+    /**
+     * Enrichit un composant de promotion avec des données réelles
+     * @param component Le composant de promotion à enrichir
+     */
+    enrichPromotionComponent: async (component: CMSComponent): Promise<void> => {
+        try {
+            // Pour les composants de promotion, on peut pré-charger les promotions
+            // et les codes promo actifs pour améliorer les performances
+            if (component.type === 'promotion') {
+                // Si le composant veut afficher des codes promo
+                if (component.content.showPromoCodes) {
+                    // Préchargement des codes promo pour avoir accès aux données
+                    const promoCodes = await promotionService.getActivePromoCodes();
+
+                    // Si un code spécifique est demandé, on le met en premier
+                    if (component.content.codeToDisplay) {
+                        const specificCode = promoCodes.find(
+                            code => code.code === component.content.codeToDisplay
+                        );
+                        if (specificCode) {
+                            // On ajoute les données du code pour que le composant puisse les utiliser
+                            component.content.preloadedCode = specificCode;
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            console.error(`Erreur lors de l'enrichissement du composant de promotion:`, error);
+        }
+    },
+
+    /**
+     * Ajoute un composant à une page existante
+     * @param pageId ID de la page
+     * @param componentId ID du composant à ajouter
+     * @param order Ordre d'affichage du composant
+     * @param data Données spécifiques pour ce composant sur cette page
+     * @returns true si l'ajout a réussi, false sinon
+     */
+    addComponentToPage: async (
+        pageId: string,
+        componentId: string,
+        order: number = 0,
+        data?: any
+    ): Promise<boolean> => {
+        try {
+            // Vérifier que l'utilisateur est administrateur (cela sera vérifié par cmsService.updatePage)
+            const page = await cmsService.getPageById(pageId);
+
+            if (!page) {
+                console.error(`Page ${pageId} non trouvée`);
+                return false;
+            }
+
+            // Créer la balise de composant
+            const componentTag = data
+                ? `<!-- component:${componentId}:${order}:${JSON.stringify(data)} -->`
+                : `<!-- component:${componentId}:${order} -->`;
+
+            // Ajouter la balise de composant au contenu de la page
+            const updatedContent = page.content + '\n' + componentTag;
+
+            // Mettre à jour la page
+            await cmsService.updatePage(pageId, {
+                content: updatedContent
+            });
+
+            return true;
+        } catch (error) {
+            console.error(`Erreur lors de l'ajout du composant ${componentId} à la page ${pageId}:`, error);
+            return false;
+        }
+    },
+
+    /**
+ * Parse les composants d'une page à partir de son contenu
+ * @param content Contenu de la page
+ * @returns Liste des composants identifiés
+ */
+    parsePageComponents: (content: string): Array<{
+        id: string;
+        type?: string;
+        order: number;
+        options?: any;
+    }> => {
+        const components: Array<{
+            id: string;
+            type?: string;
+            order: number;
+            options?: any;
+        }> = [];
+
+        if (!content) {
+            return components;
+        }
+
+        try {
+            // Essayer d'abord de parser le contenu comme JSON
+            try {
+                const jsonContent = JSON.parse(content);
+                if (jsonContent && jsonContent.components && Array.isArray(jsonContent.components)) {
+                    return jsonContent.components.map((comp: any, index: number) => ({
+                        id: comp.id || `component-${index}`,
+                        type: comp.type,
+                        order: index * 10,
+                        options: comp.settings || {}
+                    }));
+                }
+            } catch (e) {
+                // Pas un JSON valide, continuer avec la méthode regex
+            }
+
+            // Rechercher les balises de composant dans le HTML
+            // Format: <!-- component:COMPONENT_ID:ORDER:OPTIONS_JSON -->
+            const componentRegex = /<!--\s*component:([^:]+):(\d+):({.*?})\s*-->/g;
+            let match;
+
+            while ((match = componentRegex.exec(content)) !== null) {
+                const [, componentId, orderStr, optionsJson] = match;
+                let options = {};
+
+                try {
+                    options = JSON.parse(optionsJson);
+                } catch (e) {
+                    console.error(`Erreur lors du parsing des options pour le composant ${componentId}:`, e);
+                }
+
+                components.push({
+                    id: componentId,
+                    order: parseInt(orderStr, 10),
+                    options
+                });
+            }
+
+            // Trier les composants par ordre
+            return components.sort((a, b) => a.order - b.order);
+        } catch (error) {
+            console.error("Erreur lors du parsing des composants de la page:", error);
+            return [];
         }
     }
 };

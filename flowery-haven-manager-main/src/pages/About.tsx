@@ -91,7 +91,7 @@ const AboutPage = () => {
           <div className="max-w-3xl mx-auto text-center">
             <h2 className="text-3xl font-serif mb-6">Notre Passion</h2>
             <p className="text-lg text-muted-foreground mb-6">
-              Fondée en 2003 par Marie et Pierre Dupont, Floralie est née d'une
+              Fondée en 2003 par Marie et Pierre Dupont, ChezFLORA est née d'une
               passion profonde pour la beauté des fleurs et leur capacité à
               transmettre des émotions. Ce qui a commencé comme une petite
               boutique de quartier s'est transformé en une référence dans le

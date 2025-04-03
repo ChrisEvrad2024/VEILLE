@@ -49,70 +49,6 @@ export interface Promotion {
     bannerImage?: string;
 }
 
-// Créer un code promo (admin uniquement)
-const createPromoCode = async (
-    code: string,
-    type: PromoCode['type'],
-    value: number,
-    startDate: Date,
-    endDate: Date,
-    options: {
-        minPurchase?: number;
-        usageLimit?: number;
-        singleUse?: boolean;
-        productCategories?: string[];
-        description?: string;
-        isActive?: boolean;
-    } = {}
-): Promise<PromoCode> => {
-    try {
-        if (!authService.isAdmin()) {
-            throw new Error("Permission refusée");
-        }
-
-        const currentUser = authService.getCurrentUser();
-
-        if (!currentUser) {
-            throw new Error("Utilisateur non authentifié");
-        }
-
-        // Vérifier si le code existe déjà
-        const existingCodes = await dbService.getByIndex<PromoCode>("promoCodes", "code", code.toUpperCase());
-
-        if (existingCodes && existingCodes.length > 0) {
-            throw new Error("Ce code promotionnel existe déjà");
-        }
-
-        // Créer le code promo
-        const newPromoCode: PromoCode = {
-            id: `promo_${Date.now()}`,
-            code: code.toUpperCase(),
-            type,
-            value,
-            startDate,
-            endDate,
-            usageCount: 0,
-            isActive: options.isActive !== undefined ? options.isActive : true,
-            singleUse: options.singleUse || false,
-            usedByUsers: [],
-            createdBy: currentUser.id,
-            createdAt: new Date(),
-            minPurchase: options.minPurchase,
-            usageLimit: options.usageLimit,
-            productCategories: options.productCategories,
-            description: options.description
-        };
-
-        // Enregistrer le code promo
-        await dbService.addItem("promoCodes", newPromoCode);
-
-        return newPromoCode;
-    } catch (error) {
-        console.error("Error in createPromoCode:", error);
-        throw error;
-    }
-};
-
 // Générer un code promo aléatoire
 const generateRandomCode = (length: number = 8): string => {
     const characters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Exclusion des caractères ambigus comme O/0, I/1
@@ -180,14 +116,12 @@ const validatePromoCode = async (
     userId?: string
 ): Promise<PromoCode | null> => {
     try {
-        // Récupérer le code promo
-        const codes = await dbService.getByIndex<PromoCode>("promoCodes", "code", code.toUpperCase());
-
-        if (!codes || codes.length === 0) {
+        // Utiliser directement getItemById puisque 'code' est le keyPath du store
+        const promoCode = await dbService.getItemById<PromoCode>("promoCodes", code.toUpperCase());
+        
+        if (!promoCode) {
             return null;
         }
-
-        const promoCode = codes[0];
 
         // Vérifier si le code est actif
         if (!promoCode.isActive) {
@@ -226,6 +160,70 @@ const validatePromoCode = async (
     } catch (error) {
         console.error(`Error in validatePromoCode for code ${code}:`, error);
         return null;
+    }
+};
+
+// Modifiez également cette fonction dans promotion.service.ts
+const createPromoCode = async (
+    code: string,
+    type: PromoCode['type'],
+    value: number,
+    startDate: Date,
+    endDate: Date,
+    options: {
+        minPurchase?: number;
+        usageLimit?: number;
+        singleUse?: boolean;
+        productCategories?: string[];
+        description?: string;
+        isActive?: boolean;
+    } = {}
+): Promise<PromoCode> => {
+    try {
+        if (!authService.isAdmin()) {
+            throw new Error("Permission refusée");
+        }
+
+        const currentUser = authService.getCurrentUser();
+
+        if (!currentUser) {
+            throw new Error("Utilisateur non authentifié");
+        }
+
+        // Vérifier si le code existe déjà - utilisez getItemById au lieu de getByIndex
+        const existingCode = await dbService.getItemById<PromoCode>("promoCodes", code.toUpperCase());
+
+        if (existingCode) {
+            throw new Error("Ce code promotionnel existe déjà");
+        }
+
+        // Créer le code promo
+        const newPromoCode: PromoCode = {
+            id: `promo_${Date.now()}`,
+            code: code.toUpperCase(),
+            type,
+            value,
+            startDate,
+            endDate,
+            usageCount: 0,
+            isActive: options.isActive !== undefined ? options.isActive : true,
+            singleUse: options.singleUse || false,
+            usedByUsers: [],
+            createdBy: currentUser.id,
+            createdAt: new Date(),
+            minPurchase: options.minPurchase,
+            usageLimit: options.usageLimit,
+            productCategories: options.productCategories,
+            description: options.description
+        };
+
+        // Enregistrer le code promo
+        await dbService.addItem("promoCodes", newPromoCode);
+
+        return newPromoCode;
+    } catch (error) {
+        console.error("Error in createPromoCode:", error);
+        throw error;
     }
 };
 

@@ -189,11 +189,21 @@ const STORES_CONFIG = [
     // Add promoCodes store configuration
     {
         name: 'promoCodes',
-        keyPath: 'code',
+        keyPath: 'code', // Le keyPath reste 'code'
         indexes: [
+            { name: 'id', keyPath: 'id', options: { unique: true } },
+            { name: 'code', keyPath: 'code', options: { unique: true } },
             { name: 'isActive', keyPath: 'isActive', options: { unique: false } },
+            { name: 'type', keyPath: 'type', options: { unique: false } }
+        ]
+    },
+    {
+        name: 'images',
+        keyPath: 'id',
+        indexes: [
+            { name: 'createdAt', keyPath: 'createdAt', options: { unique: false } },
             { name: 'type', keyPath: 'type', options: { unique: false } },
-            { name: 'expiryDate', keyPath: 'expiryDate', options: { unique: false } }
+            { name: 'filename', keyPath: 'filename', options: { unique: false } }
         ]
     }
 ];

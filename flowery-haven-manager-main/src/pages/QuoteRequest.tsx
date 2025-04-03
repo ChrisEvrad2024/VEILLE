@@ -859,9 +859,9 @@ const QuoteRequest = () => {
                       className="w-full gap-2"
                       asChild
                     >
-                      <a href="mailto:devis@floralie.com">
+                      <a href="mailto:devis@ChezFLORA.com">
                         <Mail size={14} />
-                        devis@floralie.com
+                        devis@ChezFLORA.com
                       </a>
                     </Button>
                   </div>

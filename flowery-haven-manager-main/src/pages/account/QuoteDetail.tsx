@@ -790,8 +790,8 @@ const QuoteDetail = () => {
                     <p className="text-xs text-muted-foreground mb-2">
                       Réponse sous 24h
                     </p>
-                    <a href="mailto:devis@floralie.com" className="text-sm text-primary hover:underline">
-                      devis@floralie.com
+                    <a href="mailto:devis@ChezFLORA.com" className="text-sm text-primary hover:underline">
+                      devis@ChezFLORA.com
                     </a>
                   </div>
                   

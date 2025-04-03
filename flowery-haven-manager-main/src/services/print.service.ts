@@ -18,16 +18,16 @@ export class PrintService {
         // Logo (à remplacer par votre logo réel)
         doc.setFontSize(24);
         doc.setTextColor(44, 130, 78);
-        doc.text('FLORALIE', 20, 20);
+        doc.text('ChezFLORA', 20, 20);
         doc.setTextColor(0, 0, 0);
 
         // Informations de l'entreprise
         doc.setFontSize(10);
-        doc.text('Floralie SARL', 20, 30);
+        doc.text('ChezFLORA SARL', 20, 30);
         doc.text('123 Avenue des Fleurs', 20, 35);
         doc.text('75000 Paris, France', 20, 40);
         doc.text('Tel: +33 1 23 45 67 89', 20, 45);
-        doc.text('Email: contact@floralie.com', 20, 50);
+        doc.text('Email: contact@ChezFLORA.com', 20, 50);
 
         // Informations de la facture
         doc.setFontSize(12);
@@ -125,12 +125,12 @@ export class PrintService {
         // Logo (à remplacer par votre logo réel)
         doc.setFontSize(24);
         doc.setTextColor(44, 130, 78);
-        doc.text('FLORALIE', 20, 20);
+        doc.text('ChezFLORA', 20, 20);
         doc.setTextColor(0, 0, 0);
 
         // Informations de l'entreprise
         doc.setFontSize(10);
-        doc.text('Floralie SARL', 20, 30);
+        doc.text('ChezFLORA SARL', 20, 30);
         doc.text('123 Avenue des Fleurs', 20, 35);
         doc.text('75000 Paris, France', 20, 40);
 

@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -7,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
+import { dbService } from "@/services/db.service";
 import {
   Select,
   SelectContent,
@@ -24,7 +23,10 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { X, Plus } from "lucide-react";
+import { X, Plus, Mail, MessageCircle } from "lucide-react";
+import { blogService } from "@/services/blog.service";
+import ImageUploader from "@/components/admin/ImageUploader";
+import { Badge } from "@/components/ui/badge";
 
 // Blog post interface
 export interface BlogPost {
@@ -39,6 +41,8 @@ export interface BlogPost {
   imageUrl: string;
   category: string;
   tags: string[];
+  commentCount?: number;
+  unreadCommentCount?: number;
 }
 
 // Form validation schema
@@ -75,6 +79,8 @@ export function BlogPostForm({ post, onSubmit, onCancel }: BlogPostFormProps) {
   const [imageUrl, setImageUrl] = useState(post?.imageUrl || "");
   const [tags, setTags] = useState<string[]>(post?.tags || []);
   const [newTag, setNewTag] = useState("");
+  const [unreadComments, setUnreadComments] = useState<number>(post?.unreadCommentCount || 0);
+  const [totalComments, setTotalComments] = useState<number>(post?.commentCount || 0);
 
   // Setup form with default values
   const form = useForm<BlogPostFormValues>({
@@ -89,6 +95,26 @@ export function BlogPostForm({ post, onSubmit, onCancel }: BlogPostFormProps) {
     },
   });
 
+  // Load comments count if editing an existing post
+  useEffect(() => {
+    const loadCommentsInfo = async () => {
+      if (post?.id) {
+        try {
+          const comments = await blogService.getCommentsByPostId(parseInt(post.id));
+          setTotalComments(comments.length);
+          
+          // Count unread comments (assuming pending status means unread)
+          const unread = comments.filter(comment => comment.status === 'pending').length;
+          setUnreadComments(unread);
+        } catch (error) {
+          console.error("Error loading comments info:", error);
+        }
+      }
+    };
+
+    loadCommentsInfo();
+  }, [post?.id]);
+
   // Form submission handler
   const handleFormSubmit = (values: BlogPostFormValues) => {
     // Create new post object
@@ -101,16 +127,18 @@ export function BlogPostForm({ post, onSubmit, onCancel }: BlogPostFormProps) {
       authorName: values.authorName,
       publishDate: post?.publishDate || new Date(),
       status: values.status,
-      imageUrl: imageUrl,
+      imageUrl: imageUrl || "/assets/logo.jpeg", // Set default image if none is provided
       category: values.category,
       tags: tags,
+      commentCount: post?.commentCount || 0,
+      unreadCommentCount: post?.unreadCommentCount || 0
     };
 
     onSubmit(updatedPost);
   };
 
   // Add tag to the list
-  const handleAddTag =  () => {
+  const handleAddTag = () => {
     if (newTag && !tags.includes(newTag)) {
       setTags([...tags, newTag]);
       setNewTag("");
@@ -120,6 +148,11 @@ export function BlogPostForm({ post, onSubmit, onCancel }: BlogPostFormProps) {
   // Remove tag from the list
   const handleRemoveTag = (tag: string) => {
     setTags(tags.filter((t) => t !== tag));
+  };
+
+  // Handle image URL change
+  const handleImageChange = (url: string) => {
+    setImageUrl(url);
   };
 
   // Categories
@@ -219,28 +252,31 @@ export function BlogPostForm({ post, onSubmit, onCancel }: BlogPostFormProps) {
               )}
             />
 
-            <div className="space-y-2">
-              <Label>Image de couverture</Label>
-              <Input
-                type="url"
-                placeholder="URL de l'image"
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-              />
-              {imageUrl && (
-                <div className="relative mt-2">
-                  <img
-                    src={imageUrl}
-                    alt="Image de couverture"
-                    className="h-32 w-full object-cover rounded-md border"
-                    onError={(e) => {
-                      // If image fails to load, set a placeholder
-                      (e.target as HTMLImageElement).src = '/placeholder.svg';
-                    }}
-                  />
+            {/* Image uploader component */}
+            <ImageUploader 
+              imageUrl={imageUrl} 
+              onImageChange={handleImageChange}
+              defaultImage="/assets/logo.jpeg"
+            />
+
+            {/* Message count display (only for editing) */}
+            {post?.id && (
+              <div className="mt-4 p-3 bg-muted rounded-md flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                  <MessageCircle className="h-5 w-5 text-muted-foreground" />
+                  <span className="text-sm">Commentaires: {totalComments}</span>
                 </div>
-              )}
-            </div>
+                
+                {unreadComments > 0 && (
+                  <div className="flex items-center">
+                    <Badge variant="destructive" className="flex items-center gap-1">
+                      <Mail className="h-3 w-3" />
+                      {unreadComments} non lu{unreadComments > 1 ? 's' : ''}
+                    </Badge>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="space-y-4">

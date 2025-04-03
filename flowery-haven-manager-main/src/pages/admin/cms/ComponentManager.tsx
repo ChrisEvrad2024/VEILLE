@@ -92,15 +92,21 @@ const FIELD_TYPES = [
   { value: "color", label: "Couleur" },
 ];
 
-// Component presets for quick start
 const COMPONENT_PRESETS = {
-  banner: {
+  // [autres préréglages existants]
+  
+  promotion: {
     fields: [
-      { name: "title", label: "Titre", type: "text", required: true },
-      { name: "subtitle", label: "Sous-titre", type: "text" },
-      { name: "image", label: "Image d'arrière-plan", type: "image" },
-      { name: "buttonText", label: "Texte du bouton", type: "text" },
-      { name: "buttonLink", label: "Lien du bouton", type: "link" },
+      { name: "title", label: "Titre", type: "text", required: true, default: "Promotion Spéciale" },
+      { name: "subtitle", label: "Sous-titre", type: "text", default: "Offre limitée dans le temps" },
+      { name: "description", label: "Description", type: "textarea" },
+      { name: "image", label: "Image", type: "image" },
+      { name: "backgroundColor", label: "Couleur de fond", type: "color", default: "#ff5252" },
+      { name: "textColor", label: "Couleur du texte", type: "color", default: "#ffffff" },
+      { name: "ctaText", label: "Texte du bouton", type: "text", default: "En profiter" },
+      { name: "ctaLink", label: "Lien du bouton", type: "link", default: "/promotions" },
+      { name: "discount", label: "Texte de remise", type: "text", default: "-20%" },
+      { name: "expiryDate", label: "Date d'expiration", type: "text" }
     ],
     settings: [
       {
@@ -110,87 +116,53 @@ const COMPONENT_PRESETS = {
         default: true,
       },
       {
-        name: "height",
-        label: "Hauteur",
-        type: "select",
-        options: ["small", "medium", "large"],
-        default: "medium",
-      },
-      {
-        name: "textColor",
-        label: "Couleur du texte",
-        type: "color",
-        default: "#ffffff",
-      },
-    ],
-  },
-  slider: {
-    fields: [
-      {
-        name: "slides",
-        label: "Diapositives",
-        type: "array",
-        subfields: [
-          { name: "title", label: "Titre", type: "text" },
-          { name: "image", label: "Image", type: "image" },
-          { name: "description", label: "Description", type: "textarea" },
-        ],
-      },
-    ],
-    settings: [
-      {
-        name: "autoplay",
-        label: "Lecture automatique",
-        type: "toggle",
-        default: true,
-      },
-      {
-        name: "interval",
-        label: "Intervalle (ms)",
-        type: "number",
-        default: 5000,
-      },
-      {
-        name: "showDots",
-        label: "Afficher les points",
-        type: "toggle",
-        default: true,
-      },
-    ],
-  },
-  newsletter: {
-    fields: [
-      {
-        name: "title",
-        label: "Titre",
-        type: "text",
-        default: "Abonnez-vous à notre newsletter",
-      },
-      { name: "description", label: "Description", type: "textarea" },
-      {
-        name: "buttonText",
-        label: "Texte du bouton",
-        type: "text",
-        default: "S'abonner",
-      },
-    ],
-    settings: [
-      {
         name: "layout",
         label: "Disposition",
         type: "select",
-        options: ["inline", "stacked"],
-        default: "stacked",
+        options: ["horizontal", "vertical"],
+        default: "horizontal",
       },
       {
-        name: "backgroundColor",
-        label: "Couleur de fond",
-        type: "color",
-        default: "#f3f4f6",
+        name: "rounded",
+        label: "Coins arrondis",
+        type: "toggle",
+        default: true,
       },
+      {
+        name: "showBadge",
+        label: "Afficher le badge",
+        type: "toggle",
+        default: true,
+      },
+      {
+        name: "badgeText",
+        label: "Texte du badge",
+        type: "text",
+        default: "PROMO",
+      },
+      {
+        name: "animateBadge",
+        label: "Animer le badge",
+        type: "toggle",
+        default: true,
+      },
+      {
+        name: "shadow",
+        label: "Ombre",
+        type: "toggle",
+        default: true,
+      },
+      {
+        name: "overlayImage",
+        label: "Superposer l'image",
+        type: "toggle",
+        default: false,
+      }
     ],
   },
 };
+// Component presets for quick start
+
 
 const ComponentManager = () => {
   const navigate = useNavigate();
@@ -1065,8 +1037,9 @@ const ComponentManager = () => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="banner">Bannière</SelectItem>
-                    <SelectItem value="slider">Slider</SelectItem>
+                    <SelectItem value="all">Tous les types</SelectItem>
+                    <SelectItem value="banner">Bannières</SelectItem>
+                    <SelectItem value="slider">Sliders</SelectItem>
                     <SelectItem value="featured_products">
                       Produits en vedette
                     </SelectItem>
@@ -1076,6 +1049,7 @@ const ComponentManager = () => {
                     <SelectItem value="image">Image</SelectItem>
                     <SelectItem value="video">Vidéo</SelectItem>
                     <SelectItem value="html">HTML</SelectItem>
+                    <SelectItem value="promotion">Promotion</SelectItem>
                     <SelectItem value="custom">Personnalisé</SelectItem>
                   </SelectContent>
                 </Select>

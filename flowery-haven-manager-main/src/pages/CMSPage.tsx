@@ -1,171 +1,199 @@
 // src/pages/CMSPage.tsx
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { cmsFrontendService } from "@/services/cms-frontend.service";
+import { PageContent } from "@/services/cms.service";
+import Navbar from "@/components/layout/Navbar";
+import Footer from "@/components/layout/Footer";
 import ComponentRenderer from "@/components/cms/ComponentRenderer";
-import { Helmet } from "react-helmet"; // Pour gérer les métadonnées SEO
+import { Helmet } from "react-helmet";
 
-// Interface pour les composants intégrés dans le contenu
-interface EmbeddedComponent {
+// Interface pour un composant dans le contenu CMS
+interface PageComponent {
   id: string;
   type: string;
   content: any;
   settings: any;
+  order: number;
 }
 
-const CMSPage: React.FC = () => {
+const CMSPage = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
-
-  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState<PageContent | null>(null);
+  const [components, setComponents] = useState<PageComponent[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [pageTitle, setPageTitle] = useState("");
-  const [metaTitle, setMetaTitle] = useState("");
-  const [metaDescription, setMetaDescription] = useState("");
-  const [contentComponents, setContentComponents] = useState<
-    EmbeddedComponent[]
-  >([]);
 
   useEffect(() => {
     const loadPage = async () => {
-      setLoading(true);
+      setIsLoading(true);
       setError(null);
 
       try {
-        // Si aucun slug n'est fourni ou si c'est la racine, charge la page d'accueil
-        const pageSlug = !slug || slug === "/" ? "home" : slug;
+        // Charger la page par son slug
+        const pageData = await cmsFrontendService.getPageBySlug(slug || "");
 
-        // Récupère la page depuis le service
-        const page = await cmsFrontendService.getPageBySlug(pageSlug);
-
-        if (!page) {
+        if (!pageData) {
           setError("Page non trouvée");
-          setLoading(false);
+          setIsLoading(false);
           return;
         }
 
-        setPageTitle(page.title);
-        setMetaTitle(page.metaTitle || page.title);
-        setMetaDescription(page.metaDescription || "");
+        setPage(pageData);
 
-        // Analyse le contenu de la page pour trouver les composants intégrés
-        // Ce code dépend de la structure de votre contenu - à adapter selon vos besoins
-        const components: EmbeddedComponent[] = [];
-
-        // Si le contenu est un simple HTML, on le traite comme un composant "html"
-        if (typeof page.content === "string") {
-          components.push({
-            id: "content-html",
-            type: "html",
-            content: { html: page.content },
-            settings: { fullWidth: false },
-          });
-        }
-        // Si le contenu est un objet JSON avec des composants
-        else if (typeof page.content === "object" && page.content) {
-          // Si c'est un tableau de composants
-          if (Array.isArray(page.content)) {
-            page.content.forEach((comp, index) => {
-              if (comp.type && (comp.content || comp.settings)) {
-                components.push({
-                  id: `embedded-${index}`,
-                  type: comp.type,
-                  content: comp.content || {},
-                  settings: comp.settings || {},
-                });
-              }
-            });
-          }
-          // Si c'est un objet avec des sections de composants
-          else if (page.content.components) {
-            const pageComponents = Array.isArray(page.content.components)
-              ? page.content.components
-              : [page.content.components];
-
-            pageComponents.forEach((comp, index) => {
-              if (comp.type) {
-                components.push({
-                  id: comp.id || `component-${index}`,
-                  type: comp.type,
-                  content: comp.content || {},
-                  settings: comp.settings || {},
-                });
-              }
-            });
-          }
-        }
-
-        setContentComponents(components);
-      } catch (err) {
-        console.error("Erreur lors du chargement de la page:", err);
-        setError("Une erreur est survenue lors du chargement de la page");
+        // Analyser le contenu de la page pour extraire les composants
+        const pageComponents = parsePageComponents(pageData.content);
+        
+        // Charger les données de chaque composant
+        const componentsPromises = pageComponents.map(async (comp) => {
+          const componentData = await cmsFrontendService.getComponentData(comp.id, comp.data);
+          return componentData ? {
+            id: comp.id,
+            type: componentData.type,
+            content: componentData.content,
+            settings: componentData.settings,
+            order: comp.order
+          } : null;
+        });
+        
+        const loadedComponents = (await Promise.all(componentsPromises))
+          .filter(comp => comp !== null)
+          .sort((a, b) => (a!.order || 0) - (b!.order || 0));
+        
+        setComponents(loadedComponents as PageComponent[]);
+      } catch (error) {
+        console.error("Error loading CMS page:", error);
+        setError("Erreur lors du chargement de la page");
       } finally {
-        setLoading(false);
+        setIsLoading(false);
       }
     };
 
-    loadPage();
-  }, [slug]);
+    if (slug) {
+      loadPage();
+    }
+  }, [slug, navigate]);
 
-  // Affichage durant le chargement
-  if (loading) {
+  // Fonction pour analyser le contenu de la page et extraire les références aux composants
+  const parsePageComponents = (content: string) => {
+    const components: Array<{ id: string; data?: any; order: number }> = [];
+    
+    try {
+      // Rechercher les balises de composant dans le contenu
+      // Format attendu: <!-- component:ID:ORDER:DATA -->
+      const regex = /<!--\s*component:([\w-]+):(\d+)(?::(.*?))?\s*-->/g;
+      let match;
+      
+      while ((match = regex.exec(content)) !== null) {
+        const [, id, orderStr, dataStr] = match;
+        const order = parseInt(orderStr, 10);
+        
+        let data = undefined;
+        if (dataStr) {
+          try {
+            data = JSON.parse(dataStr);
+          } catch (e) {
+            console.warn(`Invalid JSON data for component ${id}:`, e);
+          }
+        }
+        
+        components.push({ id, data, order });
+      }
+    } catch (error) {
+      console.error("Error parsing page components:", error);
+    }
+    
+    return components;
+  };
+
+  // Rendu HTML du contenu
+  const renderHtmlContent = (content: string) => {
+    // Supprimer les balises de composant pour l'affichage HTML
+    const cleanContent = content.replace(/<!--\s*component:[^>]*-->/g, '');
+    return { __html: cleanContent };
+  };
+
+  if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
-      </div>
+      <>
+        <Navbar />
+        <div className="container mx-auto py-16 min-h-[50vh] flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+            <p className="mt-4 text-lg text-muted-foreground">Chargement de la page...</p>
+          </div>
+        </div>
+        <Footer />
+      </>
     );
   }
 
-  // Affichage en cas d'erreur
-  if (error) {
+  if (error || !page) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-4">
-        <h1 className="text-2xl font-bold text-gray-800 mb-4">{error}</h1>
-        <p className="text-gray-600 mb-6">
-          Désolé, la page demandée n'est pas disponible.
-        </p>
-        <button
-          className="px-4 py-2 bg-primary text-white rounded hover:bg-primary/90"
-          onClick={() => navigate("/")}
-        >
-          Retour à l'accueil
-        </button>
-      </div>
+      <>
+        <Navbar />
+        <div className="container mx-auto py-16 min-h-[50vh] flex items-center justify-center">
+          <div className="text-center">
+            <h1 className="text-3xl font-bold mb-4">Page non trouvée</h1>
+            <p className="text-lg text-muted-foreground mb-8">
+              {error || "La page que vous recherchez n'existe pas ou n'est pas disponible."}
+            </p>
+            <button
+              onClick={() => navigate(-1)}
+              className="px-6 py-3 bg-primary text-white rounded-md hover:bg-primary/90 transition-colors"
+            >
+              Retour
+            </button>
+          </div>
+        </div>
+        <Footer />
+      </>
     );
   }
 
   return (
     <>
-      {/* Gestion des métadonnées SEO */}
       <Helmet>
-        <title>{metaTitle}</title>
-        {metaDescription && (
-          <meta name="description" content={metaDescription} />
-        )}
+        <title>{page.metaTitle || page.title}</title>
+        {page.metaDescription && <meta name="description" content={page.metaDescription} />}
       </Helmet>
 
-      <div className="cms-page">
-        {/* Rendre chaque composant identifié dans le contenu */}
-        {contentComponents.map((component) => (
-          <div key={component.id} className="mb-8">
-            <ComponentRenderer
-              type={component.type}
-              content={component.content}
-              settings={component.settings}
+      <Navbar />
+
+      <main className="min-h-[50vh]">
+        {/* Titre de la page (optionnel - peut être masqué si inclus dans un composant) */}
+        <div className="container mx-auto pt-10 pb-6">
+          <h1 className="text-4xl font-bold">{page.title}</h1>
+        </div>
+
+        {/* Contenu HTML */}
+        {page.content && (
+          <div className="container mx-auto py-6">
+            <div 
+              className="prose prose-lg max-w-none"
+              dangerouslySetInnerHTML={renderHtmlContent(page.content)} 
             />
           </div>
-        ))}
+        )}
 
-        {/* Afficher un message si aucun composant n'est trouvé */}
-        {contentComponents.length === 0 && (
-          <div className="container mx-auto py-12 px-4">
-            <h1 className="text-3xl font-bold mb-6">{pageTitle}</h1>
-            <p className="text-gray-600">
-              Cette page n'a pas encore de contenu.
-            </p>
+        {/* Composants CMS */}
+        {components.length > 0 && (
+          <div className="cms-components py-6">
+            {components.map((component, index) => (
+              <div key={`${component.id}-${index}`} className="cms-component-wrapper my-6">
+                <ComponentRenderer 
+                  type={component.type} 
+                  content={component.content} 
+                  settings={component.settings} 
+                />
+              </div>
+            ))}
           </div>
         )}
-      </div>
+      </main>
+
+      <Footer />
     </>
   );
 };
