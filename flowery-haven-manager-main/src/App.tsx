@@ -73,6 +73,7 @@ import PageEditor from "./pages/admin/cms/PageEditor";
 import ComponentManager from "./pages/admin/cms/ComponentManager";
 import SpecialPages from "./pages/admin/cms/SpecialPages";
 import TemplateManager from "./pages/admin/cms/TemplateManager";
+import CMSVisualEditor from "./pages/admin/cms/CMSVisualEditor";  // Import de l'éditeur visuel
 
 // Import Admin Order Management
 import OrdersManagement from "./pages/admin/OrdersManagement";
@@ -167,6 +168,7 @@ const App = () => {
                   <Route index element={<CMSDashboard />} />
                   <Route path="new" element={<PageEditor />} />
                   <Route path=":id/edit" element={<PageEditor />} />
+                  <Route path=":id/visual-editor" element={<CMSVisualEditor />} />
                   <Route path="components" element={<ComponentManager />} />
                   <Route path="special" element={<SpecialPages />} />
                   <Route path="templates" element={<TemplateManager />} />

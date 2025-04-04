@@ -48,6 +48,7 @@ import {
   DialogFooter,
   DialogDescription,
 } from "@/components/ui/dialog";
+import CMSEditorButton from "@/components/cms/CMSEditorButton";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -60,7 +61,13 @@ import {
 } from "@/components/ui/alert-dialog";
 
 // Rich text editor with basic functionality
-const RichTextEditor = ({ value, onChange }: { value: string; onChange: (value: string) => void }) => {
+const RichTextEditor = ({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) => {
   const editorRef = useRef<HTMLDivElement>(null);
   const [showHtml, setShowHtml] = useState(false);
   const [htmlValue, setHtmlValue] = useState(value);
@@ -125,7 +132,7 @@ const RichTextEditor = ({ value, onChange }: { value: string; onChange: (value: 
             <span className="underline">U</span>
           </Button>
         </div>
-        
+
         <div className="flex gap-1 mr-4">
           <Button
             variant="ghost"
@@ -146,7 +153,7 @@ const RichTextEditor = ({ value, onChange }: { value: string; onChange: (value: 
             <span>1.</span>
           </Button>
         </div>
-        
+
         <div className="flex gap-1">
           <Select onValueChange={(value) => execCommand("formatBlock", value)}>
             <SelectTrigger className="h-8 w-[110px] text-xs">
@@ -162,18 +169,13 @@ const RichTextEditor = ({ value, onChange }: { value: string; onChange: (value: 
             </SelectContent>
           </Select>
         </div>
-        
+
         <div className="ml-auto flex items-center gap-2">
-          <span className="text-xs text-muted-foreground ml-2">
-            Mode HTML
-          </span>
-          <Switch
-            checked={showHtml}
-            onCheckedChange={setShowHtml}
-          />
+          <span className="text-xs text-muted-foreground ml-2">Mode HTML</span>
+          <Switch checked={showHtml} onCheckedChange={setShowHtml} />
         </div>
       </div>
-      
+
       {showHtml ? (
         <Textarea
           value={htmlValue}
@@ -197,7 +199,7 @@ const PageEditor = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const isNewPage = id === "new";
-  
+
   const [page, setPage] = useState<Partial<PageContent>>({
     title: "",
     slug: "",
@@ -206,10 +208,12 @@ const PageEditor = () => {
     metaDescription: "",
     published: false,
     type: "page",
-    isHomepage: false
+    isHomepage: false,
   });
-  
-  const [originalPage, setOriginalPage] = useState<Partial<PageContent> | null>(null);
+
+  const [originalPage, setOriginalPage] = useState<Partial<PageContent> | null>(
+    null
+  );
   const [isLoading, setIsLoading] = useState(!isNewPage);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -217,25 +221,27 @@ const PageEditor = () => {
   const [templates, setTemplates] = useState<CMSTemplate[]>([]);
   const [isPreviewDialogOpen, setIsPreviewDialogOpen] = useState(false);
   const [isUnsavedDialogOpen, setIsUnsavedDialogOpen] = useState(false);
-  const [pendingAction, setPendingAction] = useState<() => void | null>(() => null);
+  const [pendingAction, setPendingAction] = useState<() => void | null>(
+    () => null
+  );
   const [revisions, setRevisions] = useState<any[]>([]);
   const [isRevisionsDialogOpen, setIsRevisionsDialogOpen] = useState(false);
-  
+
   // Load page data
   useEffect(() => {
     if (!isNewPage) {
       loadPage();
     }
-    
+
     loadTemplates();
   }, [id]);
-  
+
   const hasUnsavedChanges = () => {
     if (!originalPage) return false;
-    
+
     return JSON.stringify(originalPage) !== JSON.stringify(page);
   };
-  
+
   // Prevent accidental navigation away from unsaved changes
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -245,30 +251,30 @@ const PageEditor = () => {
         return "";
       }
     };
-    
+
     window.addEventListener("beforeunload", handleBeforeUnload);
-    
+
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
     };
   }, [page, originalPage]);
-  
+
   const loadPage = async () => {
     if (!id || isNewPage) return;
-    
+
     setIsLoading(true);
     try {
       const loadedPage = await cmsService.getPageById(id);
-      
+
       if (!loadedPage) {
         toast.error("Page non trouvée");
         navigate("/admin/cms");
         return;
       }
-      
+
       setPage(loadedPage);
       setOriginalPage(JSON.parse(JSON.stringify(loadedPage))); // Deep copy
-      
+
       // Load revisions
       try {
         const pageRevisions = await cmsService.getPageRevisions(id);
@@ -283,7 +289,7 @@ const PageEditor = () => {
       setIsLoading(false);
     }
   };
-  
+
   const loadTemplates = async () => {
     try {
       const loadedTemplates = await cmsService.getAllTemplates();
@@ -292,26 +298,26 @@ const PageEditor = () => {
       console.error("Error loading templates:", error);
     }
   };
-  
+
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
     setPage({ ...page, [name]: value });
   };
-  
+
   const handleSwitchChange = (name: string, checked: boolean) => {
     setPage({ ...page, [name]: checked });
   };
-  
+
   const handleSelectChange = (name: string, value: string) => {
     setPage({ ...page, [name]: value });
   };
-  
+
   const handleContentChange = (content: string) => {
     setPage({ ...page, content });
   };
-  
+
   const handleBackClick = () => {
     if (hasUnsavedChanges()) {
       setIsUnsavedDialogOpen(true);
@@ -320,32 +326,35 @@ const PageEditor = () => {
       navigate("/admin/cms");
     }
   };
-  
+
   const handlePreviewClick = () => {
     setIsPreviewDialogOpen(true);
   };
-  
+
   const handleSavePage = async () => {
     if (!page.title || !page.slug) {
       setSaveError("Le titre et le slug sont obligatoires");
       setActiveTab("settings");
       return;
     }
-    
+
     setIsSaving(true);
     setSaveError(null);
-    
+
     try {
-      console.log("Début de la sauvegarde de la page", isNewPage ? "nouvelle" : "existante");
-      
+      console.log(
+        "Début de la sauvegarde de la page",
+        isNewPage ? "nouvelle" : "existante"
+      );
+
       if (isNewPage) {
         // Create new page
         console.log("Création d'une nouvelle page avec:", {
           title: page.title,
           slug: page.slug,
-          content: page.content?.substring(0, 50) + "..." // Juste le début pour le log
+          content: page.content?.substring(0, 50) + "...", // Juste le début pour le log
         });
-        
+
         const newPage = await cmsService.createPage(
           page.title!,
           page.slug!,
@@ -359,15 +368,17 @@ const PageEditor = () => {
             isHomepage: page.isHomepage,
           }
         );
-        
+
         console.log("Page créée avec succès, nouvel ID:", newPage?.id);
-        
+
         if (!newPage || !newPage.id) {
-          throw new Error("Erreur: La page a été créée mais aucun ID n'a été retourné");
+          throw new Error(
+            "Erreur: La page a été créée mais aucun ID n'a été retourné"
+          );
         }
-        
+
         toast.success("Page créée avec succès");
-        
+
         // Navigate to the edit page for the new page
         console.log("Redirection vers:", `/admin/cms/${newPage.id}/edit`);
         navigate(`/admin/cms/${newPage.id}/edit`, { replace: true });
@@ -384,19 +395,19 @@ const PageEditor = () => {
           type: page.type as PageContent["type"],
           isHomepage: page.isHomepage,
         });
-        
+
         setPage(updatedPage);
         setOriginalPage(JSON.parse(JSON.stringify(updatedPage))); // Deep copy
-        
+
         // Refresh revisions
         const pageRevisions = await cmsService.getPageRevisions(id!);
         setRevisions(pageRevisions);
-        
+
         toast.success("Page mise à jour avec succès");
       }
     } catch (error) {
       console.error("Error saving page:", error);
-      
+
       // Détails supplémentaires sur l'erreur
       if (error instanceof Error) {
         console.error("Error name:", error.name);
@@ -406,27 +417,29 @@ const PageEditor = () => {
         console.error("Unknown error type:", typeof error);
         setSaveError("Une erreur inconnue s'est produite");
       }
-      
+
       toast.error("Erreur lors de l'enregistrement de la page");
     } finally {
-      console.log("Fin du processus de sauvegarde, réinitialisation de isSaving");
+      console.log(
+        "Fin du processus de sauvegarde, réinitialisation de isSaving"
+      );
       setIsSaving(false);
     }
   };
-  
+
   const handlePublishClick = async () => {
     if (!page.published) {
       // First save the page
       await handleSavePage();
-      
+
       // Then publish it
       try {
         if (!isNewPage && id) {
           const updatedPage = await cmsService.togglePagePublished(id, true);
-          
+
           setPage(updatedPage);
           setOriginalPage(JSON.parse(JSON.stringify(updatedPage))); // Deep copy
-          
+
           toast.success("Page publiée avec succès");
         }
       } catch (error) {
@@ -435,14 +448,14 @@ const PageEditor = () => {
       }
     }
   };
-  
+
   const handleRestoreRevision = async (revisionId: string) => {
     try {
       const restoredPage = await cmsService.restorePageRevision(revisionId);
-      
+
       setPage(restoredPage);
       setOriginalPage(JSON.parse(JSON.stringify(restoredPage))); // Deep copy
-      
+
       toast.success("Révision restaurée avec succès");
       setIsRevisionsDialogOpen(false);
     } catch (error) {
@@ -450,16 +463,18 @@ const PageEditor = () => {
       toast.error("Erreur lors de la restauration de la révision");
     }
   };
-  
+
   // Format date for display
   const formatDate = (dateString: string) => {
     try {
-      return format(new Date(dateString), "dd MMMM yyyy à HH:mm", { locale: fr });
+      return format(new Date(dateString), "dd MMMM yyyy à HH:mm", {
+        locale: fr,
+      });
     } catch (e) {
       return dateString;
     }
   };
-  
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-96">
@@ -467,17 +482,13 @@ const PageEditor = () => {
       </div>
     );
   }
-  
+
   return (
     <div className="space-y-6">
       {/* Header section */}
       <div className="flex flex-wrap justify-between items-center gap-4">
         <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleBackClick}
-          >
+          <Button variant="ghost" size="icon" onClick={handleBackClick}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
@@ -501,17 +512,11 @@ const PageEditor = () => {
               Historique
             </Button>
           )}
-          <Button
-            variant="outline"
-            onClick={handlePreviewClick}
-          >
+          <Button variant="outline" onClick={handlePreviewClick}>
             <Eye className="h-4 w-4 mr-2" />
             Aperçu
           </Button>
-          <Button
-            onClick={handleSavePage}
-            disabled={isSaving}
-          >
+          <Button onClick={handleSavePage} disabled={isSaving}>
             <Save className="h-4 w-4 mr-2" />
             Enregistrer
           </Button>
@@ -528,14 +533,14 @@ const PageEditor = () => {
           )}
         </div>
       </div>
-      
+
       {saveError && (
         <div className="bg-destructive/10 text-destructive p-4 rounded-md">
           <p className="font-medium">Erreur lors de l'enregistrement</p>
           <p>{saveError}</p>
         </div>
       )}
-      
+
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="editor" className="flex items-center gap-2">
@@ -550,15 +555,28 @@ const PageEditor = () => {
             <Info className="h-4 w-4" />
             SEO
           </TabsTrigger>
+          <TabsTrigger value="visual" className="flex items-center gap-2">
+            <Eye className="h-4 w-4" />
+            Éditeur visuel
+          </TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="editor" className="space-y-4 pt-4">
           <RichTextEditor
             value={page.content || ""}
             onChange={handleContentChange}
           />
         </TabsContent>
-        
+
+        <TabsContent value="visual" className="space-y-4 pt-4">
+          <div className="bg-muted/30 p-4 rounded-md text-center">
+            <p className="mb-4">
+              Utilisez notre éditeur visuel pour créer et modifier votre page
+              sans code.
+            </p>
+            <CMSEditorButton pageId={id || ""} />
+          </div>
+        </TabsContent>
         <TabsContent value="settings" className="space-y-6 pt-4">
           <Card>
             <CardHeader>
@@ -575,7 +593,7 @@ const PageEditor = () => {
                   placeholder="Titre de la page"
                 />
               </div>
-              
+
               <div className="grid gap-2">
                 <Label htmlFor="slug">Slug</Label>
                 <div className="flex items-center space-x-2">
@@ -592,7 +610,7 @@ const PageEditor = () => {
                   L'identifiant unique qui formera l'URL de la page.
                 </p>
               </div>
-              
+
               <div className="grid gap-2">
                 <Label htmlFor="type">Type de contenu</Label>
                 <Select
@@ -624,12 +642,14 @@ const PageEditor = () => {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div className="grid gap-2">
                 <Label htmlFor="template">Template</Label>
                 <Select
                   value={page.template || "default"}
-                  onValueChange={(value) => handleSelectChange("template", value)}
+                  onValueChange={(value) =>
+                    handleSelectChange("template", value)
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -650,16 +670,20 @@ const PageEditor = () => {
                 <Switch
                   id="published"
                   checked={page.published || false}
-                  onCheckedChange={(checked) => handleSwitchChange("published", checked)}
+                  onCheckedChange={(checked) =>
+                    handleSwitchChange("published", checked)
+                  }
                 />
                 <Label htmlFor="published">Publier la page</Label>
               </div>
-              
+
               <div className="flex items-center space-x-2">
                 <Switch
                   id="isHomepage"
                   checked={page.isHomepage || false}
-                  onCheckedChange={(checked) => handleSwitchChange("isHomepage", checked)}
+                  onCheckedChange={(checked) =>
+                    handleSwitchChange("isHomepage", checked)
+                  }
                 />
                 <Label htmlFor="isHomepage" className="flex items-center gap-2">
                   <Home className="h-4 w-4" />
@@ -669,11 +693,13 @@ const PageEditor = () => {
             </CardFooter>
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="meta" className="space-y-4 pt-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Optimisation pour les moteurs de recherche</CardTitle>
+              <CardTitle className="text-lg">
+                Optimisation pour les moteurs de recherche
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-2">
@@ -689,7 +715,7 @@ const PageEditor = () => {
                   Si vide, le titre de la page sera utilisé.
                 </p>
               </div>
-              
+
               <div className="grid gap-2">
                 <Label htmlFor="metaDescription">Description SEO</Label>
                 <Textarea
@@ -701,13 +727,16 @@ const PageEditor = () => {
                   rows={4}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Une description concise qui apparaîtra dans les résultats de recherche.
+                  Une description concise qui apparaîtra dans les résultats de
+                  recherche.
                 </p>
               </div>
-              
+
               {/* Preview of how it would look in search results */}
               <div className="mt-6 p-4 border rounded-md">
-                <h3 className="text-sm font-medium mb-2">Aperçu dans les résultats de recherche</h3>
+                <h3 className="text-sm font-medium mb-2">
+                  Aperçu dans les résultats de recherche
+                </h3>
                 <div className="p-4 bg-white border rounded-md">
                   <div className="text-blue-600 text-lg font-medium truncate">
                     {page.metaTitle || page.title || "Titre de la page"}
@@ -716,7 +745,8 @@ const PageEditor = () => {
                     www.votresite.com/{page.slug === "home" ? "" : page.slug}
                   </div>
                   <div className="text-gray-600 text-sm line-clamp-2 mt-1">
-                    {page.metaDescription || "Aucune description fournie. Ajoutez une meta description pour améliorer votre référencement."}
+                    {page.metaDescription ||
+                      "Aucune description fournie. Ajoutez une meta description pour améliorer votre référencement."}
                   </div>
                 </div>
               </div>
@@ -724,7 +754,7 @@ const PageEditor = () => {
           </Card>
         </TabsContent>
       </Tabs>
-      
+
       {/* Preview Dialog */}
       <Dialog open={isPreviewDialogOpen} onOpenChange={setIsPreviewDialogOpen}>
         <DialogContent className="sm:max-w-[80%] sm:max-h-[80vh] overflow-auto">
@@ -747,7 +777,7 @@ const PageEditor = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      
+
       {/* Unsaved Changes Dialog */}
       <AlertDialog
         open={isUnsavedDialogOpen}
@@ -757,7 +787,8 @@ const PageEditor = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Modifications non enregistrées</AlertDialogTitle>
             <AlertDialogDescription>
-              Vous avez des modifications non enregistrées. Voulez-vous les enregistrer avant de quitter ?
+              Vous avez des modifications non enregistrées. Voulez-vous les
+              enregistrer avant de quitter ?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -785,7 +816,7 @@ const PageEditor = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      
+
       {/* Revisions Dialog */}
       <Dialog
         open={isRevisionsDialogOpen}
@@ -811,7 +842,9 @@ const PageEditor = () => {
                     className="flex items-center justify-between p-4 border rounded-md"
                   >
                     <div>
-                      <p className="font-medium">Révision #{revision.revisionNumber}</p>
+                      <p className="font-medium">
+                        Révision #{revision.revisionNumber}
+                      </p>
                       <p className="text-sm text-muted-foreground">
                         {formatDate(revision.createdAt)}
                       </p>

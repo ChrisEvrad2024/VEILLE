@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
@@ -19,6 +20,7 @@ interface ProductFiltersProps {
   onCategoryChange: (categoryId: string | null) => void;
   onFiltersChange: (filters: ProductFilters) => void;
   onReset: () => void;
+  initialFilters?: Partial<ProductFilters>;
 }
 
 export interface ProductFilters {
@@ -42,12 +44,105 @@ const ProductFilters = ({
   selectedCategory, 
   onCategoryChange, 
   onFiltersChange,
-  onReset
+  onReset,
+  initialFilters = {}
 }: ProductFiltersProps) => {
-  const [filters, setFilters] = useState<ProductFilters>(defaultFilters);
-  const [priceValues, setPriceValues] = useState<[number, number]>([0, 100]);
-  const [minPrice, setMinPrice] = useState<string>("0");
-  const [maxPrice, setMaxPrice] = useState<string>("100");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [filters, setFilters] = useState<ProductFilters>({
+    ...defaultFilters,
+    ...initialFilters
+  });
+  const [priceValues, setPriceValues] = useState<[number, number]>(filters.priceRange);
+  const [minPrice, setMinPrice] = useState<string>(filters.priceRange[0].toString());
+  const [maxPrice, setMaxPrice] = useState<string>(filters.priceRange[1].toString());
+  
+  // Initialize filters from URL on first load
+  useEffect(() => {
+    const params = Object.fromEntries(searchParams.entries());
+    
+    const initialFilters: Partial<ProductFilters> = {};
+    
+    if (params.minPrice && params.maxPrice) {
+      const min = parseInt(params.minPrice, 10) || 0;
+      const max = parseInt(params.maxPrice, 10) || 100;
+      initialFilters.priceRange = [min, max];
+      setPriceValues([min, max]);
+      setMinPrice(min.toString());
+      setMaxPrice(max.toString());
+    }
+    
+    if (params.inStock) {
+      initialFilters.inStock = params.inStock === 'true';
+    }
+    
+    if (params.featured) {
+      initialFilters.featured = params.featured === 'true';
+    }
+    
+    if (params.popular) {
+      initialFilters.popular = params.popular === 'true';
+    }
+    
+    if (params.sortBy && ['price-asc', 'price-desc', 'newest', 'popularity'].includes(params.sortBy)) {
+      initialFilters.sortBy = params.sortBy as ProductFilters['sortBy'];
+    }
+    
+    // Only update if we have any parameters
+    if (Object.keys(initialFilters).length > 0) {
+      const newFilters = { ...filters, ...initialFilters };
+      setFilters(newFilters);
+      onFiltersChange(newFilters);
+    }
+  }, []);
+  
+  // Update URL when filters change
+  useEffect(() => {
+    const newParams = new URLSearchParams(searchParams);
+    
+    // Only add parameters that differ from defaults
+    if (filters.priceRange[0] !== defaultFilters.priceRange[0]) {
+      newParams.set('minPrice', filters.priceRange[0].toString());
+    } else {
+      newParams.delete('minPrice');
+    }
+    
+    if (filters.priceRange[1] !== defaultFilters.priceRange[1]) {
+      newParams.set('maxPrice', filters.priceRange[1].toString());
+    } else {
+      newParams.delete('maxPrice');
+    }
+    
+    if (filters.inStock !== defaultFilters.inStock) {
+      newParams.set('inStock', filters.inStock.toString());
+    } else {
+      newParams.delete('inStock');
+    }
+    
+    if (filters.featured !== defaultFilters.featured) {
+      newParams.set('featured', filters.featured.toString());
+    } else {
+      newParams.delete('featured');
+    }
+    
+    if (filters.popular !== defaultFilters.popular) {
+      newParams.set('popular', filters.popular.toString());
+    } else {
+      newParams.delete('popular');
+    }
+    
+    if (filters.sortBy !== defaultFilters.sortBy) {
+      newParams.set('sortBy', filters.sortBy);
+    } else {
+      newParams.delete('sortBy');
+    }
+    
+    // Keep category parameter if it exists
+    if (selectedCategory) {
+      newParams.set('category', selectedCategory);
+    }
+    
+    setSearchParams(newParams, { replace: true });
+  }, [filters, selectedCategory]);
   
   // Handle price range changes from slider
   const handlePriceRangeChange = (values: number[]) => {
@@ -107,10 +202,21 @@ const ProductFilters = ({
   
   // Handle reset filters
   const handleResetFilters = () => {
-    setFilters(defaultFilters);
+    // Reset state
     setPriceValues(defaultFilters.priceRange);
     setMinPrice(defaultFilters.priceRange[0].toString());
     setMaxPrice(defaultFilters.priceRange[1].toString());
+    setFilters(defaultFilters);
+    
+    // Reset URL parameters
+    const newParams = new URLSearchParams();
+    if (selectedCategory) {
+      newParams.set('category', selectedCategory);
+    }
+    setSearchParams(newParams, { replace: true });
+    
+    // Notify parent
+    onFiltersChange(defaultFilters);
     onReset();
   };
   
@@ -146,11 +252,10 @@ const ProductFilters = ({
         <h3 className="font-serif text-xl mb-4">Prix</h3>
         <div className="space-y-6">
           <Slider
-            defaultValue={[priceValues[0], priceValues[1]]}
+            value={priceValues}
             min={0}
             max={200}
             step={1}
-            value={[priceValues[0], priceValues[1]]}
             onValueChange={handlePriceRangeChange}
             className="py-4"
           />
@@ -164,7 +269,7 @@ const ProductFilters = ({
                   id="min-price"
                   className="pl-7"
                   type="number"
-                  min={100}
+                  min={0}
                   max={priceValues[1]}
                   value={minPrice}
                   onChange={(e) => handleMinPriceChange(e.target.value)}

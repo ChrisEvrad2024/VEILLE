@@ -1,5 +1,6 @@
 // src/pages/admin/cms/CMSDashboard.tsx
 import { useState, useEffect } from "react";
+import CMSEditorButton from "@/components/admin/CMSEditorButton";
 import { useNavigate } from "react-router-dom";
 import {
   Card,
@@ -79,9 +80,13 @@ const CMSDashboard = () => {
   const [filteredPages, setFilteredPages] = useState<PageContent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "published" | "draft">("all");
-  const [typeFilter, setTypeFilter] = useState<"all" | "page" | "section" | "component">("all");
-  
+  const [statusFilter, setStatusFilter] = useState<
+    "all" | "published" | "draft"
+  >("all");
+  const [typeFilter, setTypeFilter] = useState<
+    "all" | "page" | "section" | "component"
+  >("all");
+
   // Dialog states
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deletePageId, setDeletePageId] = useState<string | null>(null);
@@ -102,7 +107,7 @@ const CMSDashboard = () => {
       // Get all pages including unpublished (true parameter)
       const allPages = await cmsService.getAllPages(true);
       setPages(allPages);
-      
+
       // Apply initial filters
       applyFilters(allPages, searchQuery, statusFilter, typeFilter);
     } catch (error) {
@@ -112,19 +117,21 @@ const CMSDashboard = () => {
       setIsLoading(false);
     }
   };
-  
+
   // Fonction d'initialisation de la page d'accueil
   const handleInitHomePage = async () => {
     try {
       // Afficher un toast de chargement
-      const loadingToast = toast.loading("Initialisation de la page d'accueil...");
-      
+      const loadingToast = toast.loading(
+        "Initialisation de la page d'accueil..."
+      );
+
       // Appeler la fonction d'initialisation
       const success = await cmsInitializer.initializeAll();
-      
+
       // Fermer le toast de chargement
       toast.dismiss(loadingToast);
-      
+
       if (success) {
         toast.success("Page d'accueil initialisée avec succès");
         // Recharger les pages pour afficher les changements
@@ -146,7 +153,7 @@ const CMSDashboard = () => {
     type: string
   ) => {
     let filtered = [...allPages];
-    
+
     // Apply search filter
     if (query) {
       filtered = filtered.filter(
@@ -156,18 +163,18 @@ const CMSDashboard = () => {
           page.content.toLowerCase().includes(query.toLowerCase())
       );
     }
-    
+
     // Apply status filter
     if (status !== "all") {
       const isPublished = status === "published";
       filtered = filtered.filter((page) => page.published === isPublished);
     }
-    
+
     // Apply type filter
     if (type !== "all") {
       filtered = filtered.filter((page) => page.type === type);
     }
-    
+
     setFilteredPages(filtered);
   };
 
@@ -188,7 +195,7 @@ const CMSDashboard = () => {
   const handleTypeChange = (value: string) => {
     setTypeFilter(value as "all" | "page" | "section" | "component");
   };
-  
+
   // Reset all filters
   const resetFilters = () => {
     setSearchQuery("");
@@ -213,11 +220,13 @@ const CMSDashboard = () => {
 
   const confirmDelete = async () => {
     if (deletePageId === null) return;
-    
+
     try {
       await cmsService.deletePage(deletePageId);
       setPages(pages.filter((page) => page.id !== deletePageId));
-      setFilteredPages(filteredPages.filter((page) => page.id !== deletePageId));
+      setFilteredPages(
+        filteredPages.filter((page) => page.id !== deletePageId)
+      );
       toast.success("Page supprimée avec succès");
     } catch (error) {
       console.error("Error deleting page:", error);
@@ -240,14 +249,16 @@ const CMSDashboard = () => {
 
   const confirmDuplicate = async () => {
     if (!duplicatePageData) return;
-    
+
     try {
-      const originalPage = pages.find(p => p.id === duplicatePageData.originalId);
-      
+      const originalPage = pages.find(
+        (p) => p.id === duplicatePageData.originalId
+      );
+
       if (!originalPage) {
         throw new Error("Page originale non trouvée");
       }
-      
+
       const newPage = await cmsService.createPage(
         duplicatePageData.title,
         duplicatePageData.slug,
@@ -260,10 +271,10 @@ const CMSDashboard = () => {
           type: originalPage.type,
         }
       );
-      
+
       setPages([...pages, newPage]);
       toast.success("Page dupliquée avec succès");
-      
+
       // Navigate to edit the new page
       navigate(`/admin/cms/${newPage.id}/edit`);
     } catch (error) {
@@ -293,10 +304,13 @@ const CMSDashboard = () => {
   // Toggle page published status
   const togglePagePublished = async (page: PageContent) => {
     try {
-      const updatedPage = await cmsService.togglePagePublished(page.id, !page.published);
-      
-      setPages(pages.map(p => p.id === updatedPage.id ? updatedPage : p));
-      
+      const updatedPage = await cmsService.togglePagePublished(
+        page.id,
+        !page.published
+      );
+
+      setPages(pages.map((p) => (p.id === updatedPage.id ? updatedPage : p)));
+
       toast.success(
         updatedPage.published
           ? "Page publiée avec succès"
@@ -313,36 +327,44 @@ const CMSDashboard = () => {
     switch (type) {
       case "page":
         return (
-          <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200">
+          <Badge
+            variant="outline"
+            className="bg-blue-100 text-blue-800 border-blue-200"
+          >
             <FileText className="w-3 h-3 mr-1" />
             Page
           </Badge>
         );
       case "section":
         return (
-          <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
+          <Badge
+            variant="outline"
+            className="bg-green-100 text-green-800 border-green-200"
+          >
             <Layout className="w-3 h-3 mr-1" />
             Section
           </Badge>
         );
       case "component":
         return (
-          <Badge variant="outline" className="bg-purple-100 text-purple-800 border-purple-200">
+          <Badge
+            variant="outline"
+            className="bg-purple-100 text-purple-800 border-purple-200"
+          >
             <FilePlus className="w-3 h-3 mr-1" />
             Composant
           </Badge>
         );
       default:
-        return (
-          <Badge variant="outline">
-            {type}
-          </Badge>
-        );
+        return <Badge variant="outline">{type}</Badge>;
     }
   };
 
   // Get badge for page status
-  const getStatusBadge = (published: boolean, isHomepage: boolean | undefined) => {
+  const getStatusBadge = (
+    published: boolean,
+    isHomepage: boolean | undefined
+  ) => {
     if (isHomepage) {
       return (
         <Badge className="bg-amber-100 text-amber-800 border-amber-200">
@@ -351,14 +373,20 @@ const CMSDashboard = () => {
         </Badge>
       );
     }
-    
+
     return published ? (
-      <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
+      <Badge
+        variant="outline"
+        className="bg-green-100 text-green-800 border-green-200"
+      >
         <Eye className="w-3 h-3 mr-1" />
         Publié
       </Badge>
     ) : (
-      <Badge variant="outline" className="bg-gray-100 text-gray-800 border-gray-200">
+      <Badge
+        variant="outline"
+        className="bg-gray-100 text-gray-800 border-gray-200"
+      >
         Brouillon
       </Badge>
     );
@@ -369,7 +397,9 @@ const CMSDashboard = () => {
       {/* Header section */}
       <div className="flex flex-wrap justify-between items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Gestion du contenu</h1>
+          <h1 className="text-3xl font-bold tracking-tight">
+            Gestion du contenu
+          </h1>
           <p className="text-muted-foreground">
             Créez, modifiez et organisez le contenu de votre site.
           </p>
@@ -379,7 +409,7 @@ const CMSDashboard = () => {
             <Plus className="h-4 w-4 mr-2" />
             Nouvelle page
           </Button>
-          <Button 
+          <Button
             variant="outline"
             onClick={handleInitHomePage}
             title="Initialiser la page d'accueil avec des composants"
@@ -402,17 +432,26 @@ const CMSDashboard = () => {
         <CardHeader className="pb-3">
           <Tabs defaultValue="all" className="w-full">
             <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="all" onClick={() => handleStatusChange("all")}>
+              <TabsTrigger
+                value="all"
+                onClick={() => handleStatusChange("all")}
+              >
                 Toutes
               </TabsTrigger>
-              <TabsTrigger value="published" onClick={() => handleStatusChange("published")}>
+              <TabsTrigger
+                value="published"
+                onClick={() => handleStatusChange("published")}
+              >
                 Publiées
               </TabsTrigger>
-              <TabsTrigger value="draft" onClick={() => handleStatusChange("draft")}>
+              <TabsTrigger
+                value="draft"
+                onClick={() => handleStatusChange("draft")}
+              >
                 Brouillons
               </TabsTrigger>
             </TabsList>
-            
+
             <div className="mt-4 flex flex-col md:flex-row gap-4">
               <div className="relative flex-1">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -424,12 +463,9 @@ const CMSDashboard = () => {
                   onChange={handleSearchChange}
                 />
               </div>
-              
+
               <div className="flex gap-2">
-                <Select
-                  value={typeFilter}
-                  onValueChange={handleTypeChange}
-                >
+                <Select value={typeFilter} onValueChange={handleTypeChange}>
                   <SelectTrigger className="w-[180px]">
                     <SelectValue placeholder="Tous les types" />
                   </SelectTrigger>
@@ -440,7 +476,7 @@ const CMSDashboard = () => {
                     <SelectItem value="component">Composants</SelectItem>
                   </SelectContent>
                 </Select>
-                
+
                 <Button
                   variant="outline"
                   size="icon"
@@ -449,7 +485,7 @@ const CMSDashboard = () => {
                 >
                   <Filter className="h-4 w-4" />
                 </Button>
-                
+
                 <Button
                   variant="outline"
                   size="icon"
@@ -462,7 +498,7 @@ const CMSDashboard = () => {
             </div>
           </Tabs>
         </CardHeader>
-        
+
         <CardContent>
           {isLoading ? (
             <div className="flex justify-center py-8">
@@ -479,9 +515,15 @@ const CMSDashboard = () => {
               </p>
               <Button
                 className="mt-4"
-                onClick={searchQuery || statusFilter !== "all" || typeFilter !== "all" ? resetFilters : handleAddPage}
+                onClick={
+                  searchQuery || statusFilter !== "all" || typeFilter !== "all"
+                    ? resetFilters
+                    : handleAddPage
+                }
               >
-                {searchQuery || statusFilter !== "all" || typeFilter !== "all" ? (
+                {searchQuery ||
+                statusFilter !== "all" ||
+                typeFilter !== "all" ? (
                   <>Réinitialiser les filtres</>
                 ) : (
                   <>
@@ -507,11 +549,19 @@ const CMSDashboard = () => {
                 <TableBody>
                   {filteredPages.map((page) => (
                     <TableRow key={page.id}>
-                      <TableCell className="font-medium">{page.title}</TableCell>
-                      <TableCell className="font-mono text-xs text-muted-foreground">/{page.slug === "home" ? "" : page.slug}</TableCell>
+                      <TableCell className="font-medium">
+                        {page.title}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">
+                        /{page.slug === "home" ? "" : page.slug}
+                      </TableCell>
                       <TableCell>{getTypeBadge(page.type)}</TableCell>
-                      <TableCell>{getStatusBadge(page.published, page.isHomepage)}</TableCell>
-                      <TableCell>{formatDate(page.updatedAt.toString())}</TableCell>
+                      <TableCell>
+                        {getStatusBadge(page.published, page.isHomepage)}
+                      </TableCell>
+                      <TableCell>
+                        {formatDate(page.updatedAt.toString())}
+                      </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -526,11 +576,23 @@ const CMSDashboard = () => {
                               <Eye className="h-4 w-4 mr-2" />
                               Voir
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleEditPage(page.id)}>
+                            <DropdownMenuItem
+                              onClick={() =>
+                                navigate(`/admin/cms/${page.id}/visual-editor`)
+                              }
+                            >
+                              <Eye className="h-4 w-4 mr-2" />
+                              Éditeur visuel
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleEditPage(page.id)}
+                            >
                               <Edit className="h-4 w-4 mr-2" />
                               Modifier
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleDuplicateClick(page)}>
+                            <DropdownMenuItem
+                              onClick={() => handleDuplicateClick(page)}
+                            >
                               <Copy className="h-4 w-4 mr-2" />
                               Dupliquer
                             </DropdownMenuItem>
@@ -576,9 +638,12 @@ const CMSDashboard = () => {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Êtes-vous sûr de vouloir supprimer ?</AlertDialogTitle>
+            <AlertDialogTitle>
+              Êtes-vous sûr de vouloir supprimer ?
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Cette action est irréversible. La page sera définitivement supprimée.
+              Cette action est irréversible. La page sera définitivement
+              supprimée.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -594,7 +659,7 @@ const CMSDashboard = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      
+
       {/* Duplicate Dialog */}
       <Dialog
         open={isDuplicateDialogOpen}
@@ -612,7 +677,11 @@ const CMSDashboard = () => {
               <Input
                 id="title"
                 value={duplicatePageData?.title || ""}
-                onChange={(e) => setDuplicatePageData(prev => prev ? {...prev, title: e.target.value} : null)}
+                onChange={(e) =>
+                  setDuplicatePageData((prev) =>
+                    prev ? { ...prev, title: e.target.value } : null
+                  )
+                }
               />
             </div>
             <div className="grid gap-2">
@@ -624,7 +693,11 @@ const CMSDashboard = () => {
                 <Input
                   id="slug"
                   value={duplicatePageData?.slug || ""}
-                  onChange={(e) => setDuplicatePageData(prev => prev ? {...prev, slug: e.target.value} : null)}
+                  onChange={(e) =>
+                    setDuplicatePageData((prev) =>
+                      prev ? { ...prev, slug: e.target.value } : null
+                    )
+                  }
                 />
               </div>
               <p className="text-xs text-muted-foreground">
@@ -642,7 +715,7 @@ const CMSDashboard = () => {
             >
               Annuler
             </Button>
-            <Button 
+            <Button
               onClick={confirmDuplicate}
               disabled={!duplicatePageData?.title || !duplicatePageData?.slug}
             >

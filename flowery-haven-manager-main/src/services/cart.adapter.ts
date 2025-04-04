@@ -1,21 +1,47 @@
 // src/services/adapters/cart.adapter.ts
 
 import { cartService } from '@/services/cart.service';
+import { productService } from '@/services/product.service';
 
 // Helper function to normalize product data before adding to cart
-const normalizeProductData = (product: any) => {
+const normalizeProductData = async (product: any) => {
+    // Log for debugging
     console.log("Normalisation du produit pour le panier:", product);
 
     // Check if this is a product from wishlist (which might have a different structure)
     const isFromWishlist = !product.productId && product.id;
+    const productId = product.productId || product.id;
+
+    // If we don't have complete data, try to fetch the full product
+    if (!product.name || !product.price || !product.images) {
+        try {
+            const fullProduct = await productService.getProductById(productId);
+            if (fullProduct) {
+                console.log("Produit complet récupéré:", fullProduct.name);
+                return {
+                    id: productId,
+                    productId: productId,
+                    name: fullProduct.name,
+                    price: fullProduct.price,
+                    quantity: product.quantity || 1,
+                    image: fullProduct.images && fullProduct.images.length > 0 
+                        ? fullProduct.images[0] 
+                        : '/assets/placeholder.png',
+                    images: fullProduct.images
+                };
+            }
+        } catch (error) {
+            console.warn("Impossible de récupérer le produit complet:", error);
+        }
+    }
 
     // Construire un objet normalisé pour éviter les erreurs
     const normalizedProduct = {
         // Utiliser le bon ID selon la source
-        id: product.id || product.productId,
-        productId: isFromWishlist ? product.id : product.productId,
+        id: productId,
+        productId: productId,
         name: product.name || 'Produit sans nom',
-        price: typeof product.price === 'number' ? product.price : 0,
+        price: typeof product.price === 'number' ? product.price : (parseFloat(product.price) || 0),
         // Prioriser les sources d'image dans l'ordre
         image: product.image || (product.images && product.images.length > 0 ? product.images[0] : '/assets/placeholder.png'),
         quantity: product.quantity || 1,
@@ -41,7 +67,7 @@ const addToCart = async (product: any) => {
 
     try {
         // Normalize product data to ensure compatibility
-        const normalizedProduct = normalizeProductData(product);
+        const normalizedProduct = await normalizeProductData(product);
 
         // Call cart service with normalized product
         await cartService.addToCart(normalizedProduct, normalizedProduct.quantity);

@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Product } from '@/types/product';
-import { ShoppingBag, Heart, CheckCircle, XCircle } from 'lucide-react';
+import { ShoppingBag, Heart, CheckCircle, XCircle, MessageSquare } from 'lucide-react';
 import { cartService } from '@/services/cart.service';
 import { wishlistService } from '@/services/wishlist.service';
+import { commentService } from '@/services/comment.service';
 import { toast } from 'sonner';
 
 interface ProductCardProps {
@@ -14,6 +15,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
   const [isHovered, setIsHovered] = useState(false);
   const [inWishlist, setInWishlist] = useState(false);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const [commentCount, setCommentCount] = useState<number | null>(null);
   
   // Vérifier si le produit est dans la liste de souhaits au chargement
   useEffect(() => {
@@ -27,6 +29,20 @@ const ProductCard = ({ product }: ProductCardProps) => {
     };
     
     checkWishlist();
+  }, [product.id]);
+
+  // Charger le nombre de commentaires
+  useEffect(() => {
+    const loadCommentCount = async () => {
+      try {
+        const count = await commentService.getCommentCount(product.id);
+        setCommentCount(count);
+      } catch (error) {
+        console.error('Error loading comment count:', error);
+      }
+    };
+    
+    loadCommentCount();
   }, [product.id]);
 
   const quickAddToCart = async (e: React.MouseEvent) => {
@@ -64,7 +80,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
         });
       } else {
         await wishlistService.addToWishlist({
-          id: `wish_${Date.now()}`,
+          id: product.id,
           productId: product.id,
           name: product.name,
           price: product.price,
@@ -144,7 +160,17 @@ const ProductCard = ({ product }: ProductCardProps) => {
         
         <div className="text-center">
           <h3 className="font-serif text-lg font-medium">{product.name}</h3>
-          <p className="mt-1 text-primary font-medium">{product.price.toFixed(2)} XAF</p>
+          <div className="flex items-center justify-center gap-2 mt-1">
+            <p className="text-primary font-medium">{product.price.toFixed(2)} XAF</p>
+            
+            {/* Affichage du nombre de commentaires */}
+            {commentCount !== null && (
+              <span className="text-xs text-muted-foreground flex items-center">
+                <MessageSquare size={12} className="mr-1" />
+                {commentCount}
+              </span>
+            )}
+          </div>
           {!isInStock && (
             <p className="text-xs text-red-500 mt-1">Rupture de stock</p>
           )}
