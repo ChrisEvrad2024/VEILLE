@@ -250,95 +250,106 @@ class CartService {
     productOrId: string | Product, 
     quantity: number = 1, 
     options?: Record<string, any>
-  ): Promise<CartItem> {
+): Promise<CartItem> {
     try {
-      let product: Product;
-      
-      // Si un string ID a été passé, récupérer le produit
-      if (typeof productOrId === 'string') {
-        const fetchedProduct = await productService.getProductById(productOrId);
-        if (!fetchedProduct) {
-          throw new Error('Product not found');
+        // Valider la quantité
+        if (quantity <= 0) {
+            console.warn("Tentative d'ajout au panier avec une quantité négative ou nulle");
+            quantity = 1;
         }
-        product = fetchedProduct;
-      } else {
-        product = productOrId;
-      }
+        
+        let product: Product;
+        
+        // Récupérer le produit si l'ID est passé
+        if (typeof productOrId === 'string') {
+            const fetchedProduct = await productService.getProductById(productOrId);
+            if (!fetchedProduct) {
+                throw new Error('Produit non trouvé');
+            }
+            product = fetchedProduct;
+        } else {
+            product = productOrId;
+        }
+        
+        // Vérifier la disponibilité du stock
+        if (product.stock !== undefined && product.stock < quantity) {
+            throw new Error(`Stock insuffisant. Seulement ${product.stock} unités disponibles.`);
+        }
   
-      const currentUser = authService.getCurrentUser();
-      const cart = await this.getCart();
-      
-      // Vérifier si un article avec le même produit et options existe
-      const existingItemIndex = cart.findIndex(item => 
-        item.productId === product.id && 
-        JSON.stringify(item.options || {}) === JSON.stringify(options || {})
-      );
-      
-      if (existingItemIndex >= 0) {
-        // Mettre à jour la quantité si l'article existe
-        const updatedItem = {
-          ...cart[existingItemIndex],
-          quantity: (cart[existingItemIndex].quantity || 1) + quantity
-        };
+        const currentUser = authService.getCurrentUser();
+        const cart = await this.getCart();
         
-        if (currentUser) {
-          // Pour les utilisateurs authentifiés, mettre à jour dans IndexedDB
-          try {
-            await dbService.updateItem('cart', updatedItem);
-          } catch (error) {
-            console.error('Error updating item in IndexedDB:', error);
-            // Fallback to localStorage
-            cart[existingItemIndex] = updatedItem;
-            localStorage.setItem(this.storageKey, JSON.stringify(cart));
-          }
+        // Rechercher l'item existant
+        const existingItemIndex = cart.findIndex(item => 
+            item.productId === product.id && 
+            JSON.stringify(item.options || {}) === JSON.stringify(options || {})
+        );
+        
+        if (existingItemIndex >= 0) {
+            // Vérifier le stock pour la quantité cumulée
+            const newQuantity = (cart[existingItemIndex].quantity || 1) + quantity;
+            if (product.stock !== undefined && product.stock < newQuantity) {
+                throw new Error(`Stock insuffisant pour la quantité demandée.`);
+            }
+            
+            // Mettre à jour la quantité si l'article existe
+            const updatedItem = {
+                ...cart[existingItemIndex],
+                quantity: newQuantity
+            };
+            
+            // Mise à jour dans IndexedDB ou localStorage selon le cas
+            if (currentUser) {
+                try {
+                    await dbService.updateItem('cart', updatedItem);
+                } catch (error) {
+                    console.error('Erreur de mise à jour dans IndexedDB:', error);
+                    cart[existingItemIndex] = updatedItem;
+                    localStorage.setItem(this.storageKey, JSON.stringify(cart));
+                }
+            } else {
+                cart[existingItemIndex] = updatedItem;
+                localStorage.setItem(this.storageKey, JSON.stringify(cart));
+            }
+            
+            this.dispatchCartUpdatedEvent();
+            return updatedItem;
         } else {
-          // Pour les utilisateurs invités, mettre à jour dans localStorage
-          cart[existingItemIndex] = updatedItem;
-          localStorage.setItem(this.storageKey, JSON.stringify(cart));
+            // Ajouter un nouvel élément
+            const newItem: CartItem = {
+                id: uuidv4(),
+                userId: currentUser?.id || 'local',
+                productId: product.id,
+                name: product.name || "Produit",
+                price: product.price || 0,
+                quantity,
+                image: product.images && product.images.length > 0 ? product.images[0] : "/assets/placeholder.png",
+                dateAdded: new Date(),
+                options,
+                product
+            };
+            
+            if (currentUser) {
+                try {
+                    await dbService.addItem('cart', newItem);
+                } catch (error) {
+                    console.error('Erreur d\'ajout à IndexedDB:', error);
+                    cart.push(newItem);
+                    localStorage.setItem(this.storageKey, JSON.stringify(cart));
+                }
+            } else {
+                cart.push(newItem);
+                localStorage.setItem(this.storageKey, JSON.stringify(cart));
+            }
+            
+            this.dispatchCartUpdatedEvent();
+            return newItem;
         }
-        
-        this.dispatchCartUpdatedEvent();
-        return updatedItem;
-      } else {
-        // Ajouter un nouvel élément
-        const newItem: CartItem = {
-          id: uuidv4(),
-          userId: currentUser?.id || 'local',
-          productId: product.id,
-          name: product.name || "Produit",
-          price: product.price || 0,
-          quantity,
-          // Utiliser une méthode sécurisée pour obtenir l'image
-          image: product.image || (product.images && product.images.length > 0 ? product.images[0] : "/assets/placeholder.png"),
-          dateAdded: new Date(),
-          options,
-          product
-        };
-        
-        if (currentUser) {
-          // Pour les utilisateurs authentifiés, ajouter à IndexedDB
-          try {
-            await dbService.addItem('cart', newItem);
-          } catch (error) {
-            console.error('Error adding item to IndexedDB:', error);
-            // Fallback to localStorage
-            cart.push(newItem);
-            localStorage.setItem(this.storageKey, JSON.stringify(cart));
-          }
-        } else {
-          // Pour les utilisateurs invités, ajouter à localStorage
-          cart.push(newItem);
-          localStorage.setItem(this.storageKey, JSON.stringify(cart));
-        }
-        
-        this.dispatchCartUpdatedEvent();
-        return newItem;
-      }
     } catch (error) {
-      console.error('Error adding to cart:', error);
-      throw error;
+        console.error('Erreur d\'ajout au panier:', error);
+        throw error;
     }
-  }
+}
 
   /**
    * Updates the quantity of an item in the cart

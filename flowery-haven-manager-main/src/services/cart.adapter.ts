@@ -5,14 +5,31 @@ import { productService } from '@/services/product.service';
 
 // Helper function to normalize product data before adding to cart
 const normalizeProductData = async (product: any) => {
-    // Log for debugging
     console.log("Normalisation du produit pour le panier:", product);
 
-    // Check if this is a product from wishlist (which might have a different structure)
+    // CORRECTION: Si le produit a une propriété product complète, l'utiliser directement
+    if (product.product && product.product.id && product.product.price) {
+        const fullProduct = product.product;
+
+        console.log("Utilisation du produit imbriqué:", fullProduct.name);
+        return {
+            id: fullProduct.id,
+            productId: fullProduct.id,
+            name: fullProduct.name,
+            price: fullProduct.price,
+            quantity: product.quantity || 1,
+            image: fullProduct.images && fullProduct.images.length > 0
+                ? fullProduct.images[0]
+                : '/assets/placeholder.png',
+            images: fullProduct.images
+        };
+    }
+
+    // Code existant pour d'autres cas
     const isFromWishlist = !product.productId && product.id;
     const productId = product.productId || product.id;
 
-    // If we don't have complete data, try to fetch the full product
+    // Si nous n'avons pas de données complètes, essayer de récupérer le produit
     if (!product.name || !product.price || !product.images) {
         try {
             const fullProduct = await productService.getProductById(productId);
@@ -24,8 +41,8 @@ const normalizeProductData = async (product: any) => {
                     name: fullProduct.name,
                     price: fullProduct.price,
                     quantity: product.quantity || 1,
-                    image: fullProduct.images && fullProduct.images.length > 0 
-                        ? fullProduct.images[0] 
+                    image: fullProduct.images && fullProduct.images.length > 0
+                        ? fullProduct.images[0]
                         : '/assets/placeholder.png',
                     images: fullProduct.images
                 };
@@ -37,15 +54,12 @@ const normalizeProductData = async (product: any) => {
 
     // Construire un objet normalisé pour éviter les erreurs
     const normalizedProduct = {
-        // Utiliser le bon ID selon la source
         id: productId,
         productId: productId,
         name: product.name || 'Produit sans nom',
         price: typeof product.price === 'number' ? product.price : (parseFloat(product.price) || 0),
-        // Prioriser les sources d'image dans l'ordre
         image: product.image || (product.images && product.images.length > 0 ? product.images[0] : '/assets/placeholder.png'),
         quantity: product.quantity || 1,
-        // S'assurer que nous avons une propriété images pour la compatibilité
         images: product.images || [product.image || '/assets/placeholder.png']
     };
 

@@ -23,15 +23,15 @@ export interface LocalWishlistItem {
 
 // Fonction utilitaire pour émettre un événement de mise à jour
 const notifyWishlistUpdated = () => {
-    // Dispatch un event custom pour notifier l'interface
     try {
-        window.dispatchEvent(new CustomEvent('wishlistUpdated'));
-        console.log("Événement wishlistUpdated émis");
+        // Utiliser requestAnimationFrame pour s'assurer que la notification est envoyée après un rendu
+        window.requestAnimationFrame(() => {
+            window.dispatchEvent(new CustomEvent('wishlistUpdated'));
+        });
     } catch (error) {
         console.error("Erreur lors de l'émission de l'événement wishlistUpdated:", error);
     }
 };
-
 // Fonction utilitaire pour récupérer les éléments locaux
 const getLocalWishlistItems = (): LocalWishlistItem[] => {
     try {
@@ -110,58 +110,53 @@ const getWishlist = async (): Promise<WishlistItem[]> => {
 // Ajouter un produit à la wishlist
 const addToWishlist = async (item: { id: string, name: string, price: number, image: string }): Promise<boolean> => {
     try {
-        console.log("Ajout à la wishlist:", item);
+        // S'assurer que l'ID est bien un string et pas undefined/null
+        const productId = item.id;
+        if (!productId) {
+            console.error("ID de produit manquant lors de l'ajout à la wishlist");
+            return false;
+        }
+        
         const currentUser = authService.getCurrentUser();
 
         if (!currentUser) {
-            console.log("Utilisateur non connecté, ajout au localStorage");
             // Utilisateur non connecté, utiliser localStorage
             const wishlistItems: LocalWishlistItem[] = getLocalWishlistItems();
 
-            // Vérifier si le produit est déjà dans la wishlist
-            if (!wishlistItems.some(wishItem => wishItem.id === item.id)) {
-                // Ajouter date pour permettre le tri même en localStorage
+            // Vérifier les doublons par ID de produit
+            if (!wishlistItems.some(wishItem => wishItem.id === productId)) {
                 const newItem = {
                     ...item,
                     dateAdded: new Date().toISOString()
                 };
-
+                
                 wishlistItems.push(newItem);
                 localStorage.setItem("wishlist", JSON.stringify(wishlistItems));
-                console.log("Produit ajouté à la wishlist locale");
-
+                
                 // Notifier les composants
                 notifyWishlistUpdated();
-            } else {
-                console.log("Produit déjà dans la wishlist locale");
             }
 
             return true;
         }
 
-        console.log("Utilisateur connecté, ajout à IndexedDB");
         // Utilisateur connecté, utiliser IndexedDB
-        // Vérifier si le produit est déjà dans la wishlist
         const existingItems = await dbService.getByIndex<WishlistItem>("wishlist", "userId", currentUser.id);
-        const existingItem = existingItems.find(wishItem => wishItem.productId === item.id);
+        
+        // Vérifier les doublons par ID de produit
+        if (!existingItems.some(wishItem => wishItem.productId === productId)) {
+            // Créer un nouvel élément avec l'ID correct
+            const newItem: WishlistItem = {
+                userId: currentUser.id,
+                productId: productId, // Utiliser productId de façon cohérente
+                dateAdded: new Date()
+            };
 
-        if (existingItem) {
-            console.log("Produit déjà dans la wishlist IndexedDB");
-            return true; // Déjà dans la wishlist
+            await dbService.addItem("wishlist", newItem);
+            
+            // Notifier les composants
+            notifyWishlistUpdated();
         }
-
-        // Ajouter un nouvel élément
-        const newItem: WishlistItem = {
-            userId: currentUser.id,
-            productId: item.id,
-            dateAdded: new Date()
-        };
-
-        await dbService.addItem("wishlist", newItem);
-        console.log("Produit ajouté à la wishlist IndexedDB");
-
-        // Notifier les composants
-        notifyWishlistUpdated();
 
         return true;
     } catch (error) {

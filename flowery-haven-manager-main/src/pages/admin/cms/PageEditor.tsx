@@ -198,7 +198,9 @@ const RichTextEditor = ({
 const PageEditor = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const isNewPage = id === "new";
+  
+  // Correction: vérification plus robuste de l'état "new"
+  const isNewPage = !id || id === "new" || window.location.pathname.includes("/admin/cms/new");
 
   const [page, setPage] = useState<Partial<PageContent>>({
     title: "",
@@ -229,12 +231,27 @@ const PageEditor = () => {
 
   // Load page data
   useEffect(() => {
-    if (!isNewPage) {
+    if (!isNewPage && id) {
       loadPage();
+    } else {
+      // Si c'est une nouvelle page, on initialise avec des valeurs par défaut
+      setPage({
+        title: "",
+        slug: "",
+        content: "",
+        metaTitle: "",
+        metaDescription: "",
+        published: false,
+        type: "page",
+        isHomepage: false,
+      });
+      setIsLoading(false);
+      // Définir l'onglet actif sur "settings" pour les nouvelles pages
+      setActiveTab("settings");
     }
 
     loadTemplates();
-  }, [id]);
+  }, [id, isNewPage]);
 
   const hasUnsavedChanges = () => {
     if (!originalPage) return false;
@@ -331,11 +348,28 @@ const PageEditor = () => {
     setIsPreviewDialogOpen(true);
   };
 
+  const generateRandomSlug = () => {
+    const timestamp = Date.now().toString().slice(-6);
+    return `page-${timestamp}`;
+  };
+
   const handleSavePage = async () => {
-    if (!page.title || !page.slug) {
-      setSaveError("Le titre et le slug sont obligatoires");
+    if (!page.title) {
+      setSaveError("Le titre est obligatoire");
       setActiveTab("settings");
       return;
+    }
+
+    // Si le slug est vide, générer un slug basé sur le titre ou aléatoire
+    if (!page.slug) {
+      const slug = page.title 
+        ? page.title.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Supprime les accents
+            .replace(/[^\w\s-]/g, '') // Supprime les caractères spéciaux
+            .replace(/\s+/g, '-') // Remplace les espaces par des tirets
+            .replace(/--+/g, '-') // Évite les tirets multiples
+            .substring(0, 60) // Limite la longueur
+        : generateRandomSlug();
+      setPage({ ...page, slug });
     }
 
     setIsSaving(true);
@@ -569,13 +603,25 @@ const PageEditor = () => {
         </TabsContent>
 
         <TabsContent value="visual" className="space-y-4 pt-4">
-          <div className="bg-muted/30 p-4 rounded-md text-center">
-            <p className="mb-4">
-              Utilisez notre éditeur visuel pour créer et modifier votre page
-              sans code.
-            </p>
-            <CMSEditorButton pageId={id || ""} />
-          </div>
+          {!isNewPage ? (
+            <div className="bg-muted/30 p-4 rounded-md text-center">
+              <p className="mb-4">
+                Utilisez notre éditeur visuel pour créer et modifier votre page
+                sans code.
+              </p>
+              <CMSEditorButton pageId={id || ""} />
+            </div>
+          ) : (
+            <div className="bg-muted/30 p-4 rounded-md text-center">
+              <p className="mb-4">
+                Veuillez d'abord enregistrer la page pour utiliser l'éditeur visuel.
+              </p>
+              <Button onClick={handleSavePage} disabled={isSaving}>
+                <Save className="h-4 w-4 mr-2" />
+                Enregistrer pour continuer
+              </Button>
+            </div>
+          )}
         </TabsContent>
         <TabsContent value="settings" className="space-y-6 pt-4">
           <Card>

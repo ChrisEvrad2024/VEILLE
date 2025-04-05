@@ -108,37 +108,35 @@ const Wishlist = () => {
   const handleAddToCart = async (product: any) => {
     // Prevent multiple clicks
     if (processingProductIds.includes(product.id)) return;
-
+  
     setProcessingProductIds((prev) => [...prev, product.id]);
-
+  
     try {
       console.log("Ajout au panier (original):", product);
-
-      // S'assurer que le produit a une structure complète
-      const formattedProduct = {
-        ...product,
-        id: product.productId || product.id,
-        productId: product.productId || product.id,
-        price:
-          typeof product.price === "number"
-            ? product.price
-            : parseFloat(product.price) || 0,
-        image: product.image || "/assets/placeholder.png",
-        images: product.images || [product.image || "/assets/placeholder.png"],
-        quantity: 1,
+  
+      // Extraction propre des données du produit, en priorité depuis l'objet "product" imbriqué
+      const actualProduct = product.product || product;
+      
+      // Créer un objet propre avec uniquement les propriétés nécessaires au panier
+      const cartProduct = {
+        id: actualProduct.id,
+        name: actualProduct.name || "Produit inconnu",
+        price: actualProduct.price || 0,
+        image: actualProduct.images?.[0] || product.image || "/assets/placeholder.png",
+        quantity: 1
       };
-
-      console.log("Produit formaté pour le panier:", formattedProduct);
-
-      // Use the cart adapter with formatted data
-      const result = await cartAdapter.addToCart(formattedProduct);
-
-      if (result.success) {
+  
+      console.log("Produit simplifié pour le panier:", cartProduct);
+  
+      // Appel direct à l'adaptateur de panier avec des données simplifiées
+      const result = await cartAdapter.addToCart(cartProduct);
+  
+      if (result?.success) {
         toast.success("Produit ajouté au panier", {
-          description: product.name,
+          description: cartProduct.name,
         });
       } else {
-        throw new Error(result.error || "Échec d'ajout au panier");
+        throw new Error(result?.error || "Échec d'ajout au panier");
       }
     } catch (error) {
       console.error("Erreur ajout panier:", error);

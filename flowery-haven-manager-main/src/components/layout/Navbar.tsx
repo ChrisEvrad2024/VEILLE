@@ -170,6 +170,7 @@ export const Navbar = () => {
             { path: "/wishlist", label: "Wishlist" },
             { path: "/blog", label: "Blog" },
             { path: "/about", label: "À Propos" },
+            { path: "/realisations", label: "Realisations" },
             { path: "/contact", label: "Contact" },
           ].map((item) => (
             <Link

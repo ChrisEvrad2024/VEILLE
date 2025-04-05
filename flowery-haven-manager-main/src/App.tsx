@@ -1,3 +1,4 @@
+// src/App.tsx
 import { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -29,6 +30,7 @@ import Wishlist from "./pages/Wishlist";
 import BlogPost from "./pages/BlogPost";
 import Contact from "./pages/Contact";
 import About from "./pages/About";
+import Realisations from "./pages/Realisations"; // Import de la nouvelle page
 
 // Import CMSPage for dynamic content
 import CMSPage from "./pages/CMSPage";
@@ -110,6 +112,7 @@ const App = () => {
             <Route path="/wishlist" element={<Wishlist />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/about" element={<About />} />
+            <Route path="/realisations" element={<Realisations />} /> {/* Nouvelle route pour Nos réalisations */}
 
             {/* Blog Routes */}
             <Route path="/blog" element={<Blog />} />

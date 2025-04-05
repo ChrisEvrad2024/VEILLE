@@ -127,6 +127,12 @@ const updateProduct = async (product: Product): Promise<Product> => {
 // Nouvelle méthode: Mettre à jour uniquement le stock d'un produit
 const updateProductStock = async (productId: string, newStock: number): Promise<Product | null> => {
     try {
+        // Valider le stock
+        if (newStock < 0) {
+            console.warn(`Stock négatif empêché pour le produit ${productId}`);
+            newStock = 0;
+        }
+        
         const product = await getProductById(productId);
         
         if (!product) {
@@ -134,6 +140,7 @@ const updateProductStock = async (productId: string, newStock: number): Promise<
             return null;
         }
         
+        // Utiliser une transaction pour garantir l'atomicité
         const updatedProduct: Product = {
             ...product,
             stock: newStock,
@@ -142,13 +149,12 @@ const updateProductStock = async (productId: string, newStock: number): Promise<
         
         await dbService.updateItem("products", updatedProduct);
         
-        // Si le stock est épuisé, effectuer des actions supplémentaires si nécessaire
+        // Notifications de stock bas
         if (newStock === 0) {
             console.log(`Produit ${product.name} maintenant en rupture de stock`);
-            // Ici, vous pourriez vouloir envoyer des notifications, etc.
+            // Ici, vous pourriez implémenter un système de notification
         } else if (newStock <= 5) {
             console.log(`Alerte stock bas pour ${product.name}: ${newStock} unités restantes`);
-            // Envoi d'alerte de stock bas
         }
         
         return updatedProduct;

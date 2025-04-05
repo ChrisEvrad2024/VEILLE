@@ -495,14 +495,15 @@ const getAllComponents = async (activeOnly: boolean = true): Promise<CMSComponen
 
 const initHomePage = async (): Promise<void> => {
     try {
-        const existingPages = await dbService.getAllItems<PageContent>("cmsPages");
-        const homePage = existingPages.find(page => page.isHomepage);
+        console.log("Initialisation automatique de la page d'accueil désactivée");
+        // const existingPages = await dbService.getAllItems<PageContent>("cmsPages");
+        // const homePage = existingPages.find(page => page.isHomepage);
 
-        // Si une page d'accueil existe déjà et a du contenu, ne pas la remplacer
-        if (homePage && homePage.content && homePage.content.length > 50) {
-            console.log("Une page d'accueil avec du contenu existe déjà");
-            return;
-        }
+        // // Si une page d'accueil existe déjà et a du contenu, ne pas la remplacer
+        // if (homePage && homePage.content && homePage.content.length > 50) {
+        //     console.log("Une page d'accueil avec du contenu existe déjà");
+        //     return;
+        // }
 
         console.log("Initialisation de la page d'accueil avec des composants...");
 
@@ -871,21 +872,21 @@ const deleteTemplate = async (id: string): Promise<boolean> => {
 // Initialiser les pages par défaut
 const initDefaultPages = async (): Promise<void> => {
     try {
-        const existingPages = await dbService.getAllItems<PageContent>("cmsPages");
+        // const existingPages = await dbService.getAllItems<PageContent>("cmsPages");
 
-        if (existingPages.length === 0) {
-            console.log("Initializing default CMS pages...");
+        // if (existingPages.length === 0) {
+        //     console.log("Initializing default CMS pages...");
 
-            // ... code existant pour créer les pages par défaut ...
+        //     // ... code existant pour créer les pages par défaut ...
 
-            // Initialiser la page d'accueil avec des composants modernes
-            await initHomePage();
+        //     // Initialiser la page d'accueil avec des composants modernes
+        //     await initHomePage();
 
-            console.log("Default CMS pages initialized!");
-        } else {
-            // Même si des pages existent, s'assurer que la page d'accueil est moderne
-            await initHomePage();
-        }
+        //     console.log("Default CMS pages initialized!");
+        // } else {
+        //     // Même si des pages existent, s'assurer que la page d'accueil est moderne
+        //     await initHomePage();
+        // }
     } catch (error) {
         console.error("Error in initDefaultPages:", error);
     }

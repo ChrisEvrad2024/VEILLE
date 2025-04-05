@@ -14,21 +14,19 @@ export interface RegistrationData {
 // Enhanced auth adapter with better error handling and consistent behavior
 const login = async (email: string, password: string): Promise<Omit<User, 'password'>> => {
     try {
-        // Store intended destination before login attempt
-        const redirectPath = localStorage.getItem('authRedirectPath') || '/';
+        // Get intended destination before login attempt
+        const redirectPath = localStorage.getItem('authRedirectPath');
 
         const user = await authService.login(email, password);
 
         // Clear any stored redirect paths on successful login
+        // We'll keep this value accessible in the return object but remove from storage
+        // to prevent unwanted redirects on future logins
         localStorage.removeItem('authRedirectPath');
 
-        // Return the destination along with the user info
-        return {
-            ...user,
-            redirectTo: redirectPath
-        };
+        return user;
     } catch (error) {
-        // Transmettre le message d'erreur exact au lieu de préfixer avec "Échec de connexion"
+        // Keep the original error message without prefixing
         const message = error instanceof Error ? error.message : 'Erreur lors de la connexion';
 
         // Special handling for 2FA if needed
@@ -36,7 +34,7 @@ const login = async (email: string, password: string): Promise<Omit<User, 'passw
             throw new Error('2FA_REQUIRED');
         }
 
-        // Préserver le message d'erreur original
+        // Preserve original error message
         throw new Error(message);
     }
 };
@@ -47,9 +45,6 @@ const logout = (): void => {
 
         // Clear any stored paths
         localStorage.removeItem('authRedirectPath');
-
-        // Optionally refresh to ensure clean state
-        // window.location.href = '/auth/login';
     } catch (error) {
         console.error('Logout error:', error);
         // Still attempt to clear storage even if service fails

@@ -1,366 +1,428 @@
 // src/utils/cms-initializer.ts
-import { cmsService } from '@/services/cms.service';
-import { cmsFrontendService } from '@/services/cms-frontend.service';
-import { promotionService } from '@/services/promotion.service';
+import { cmsService, PageContent } from '@/services/cms.service';
+import { cmsEditorService } from '@/services/cms-editor.service';
 
 /**
- * Utilitaire pour initialiser les composants CMS et créer des pages avec ces composants
+ * Utilitaire pour initialiser le CMS manuellement
+ * Permet de créer des pages prédéfinies et des composants
  */
 export const cmsInitializer = {
     /**
-     * Initialise les composants CMS par défaut
+     * Initialise toutes les pages par défaut
+     * @returns True si l'initialisation est réussie, false sinon
      */
-    initializeDefaultComponents: async () => {
+    initializeAll: async (): Promise<boolean> => {
         try {
-            console.log("Initialisation des composants CMS par défaut...");
+            // Initialiser la page d'accueil
+            await cmsInitializer.initializeHomePage();
 
-            // Vérifier si des composants existent déjà
-            const existingComponents = await cmsService.getAllComponents();
+            // Initialiser la page À propos
+            await cmsInitializer.initializeAboutPage();
 
-            if (existingComponents.length === 0) {
-                // Création de la bannière principale
-                const bannerComponent = await cmsService.createComponent(
-                    "Bannière principale",
-                    "banner",
-                    {
-                        title: "Bienvenue chez Flora",
-                        subtitle: "Des fleurs fraîches pour toutes les occasions",
-                        buttonText: "Découvrir notre collection",
-                        buttonLink: "/catalog",
-                        image: "https://images.unsplash.com/photo-1508380702597-707c1b00695c?q=80&w=1974"
-                    },
-                    {
-                        fullWidth: true,
-                        height: "large",
-                        textColor: "#ffffff"
+            // Initialiser la page Réalisations
+            await cmsInitializer.initializeRealisationsPage();
+
+            return true;
+        } catch (error) {
+            console.error("Erreur lors de l'initialisation du CMS:", error);
+            return false;
+        }
+    },
+
+    /**
+     * Initialise uniquement la page d'accueil
+     * @returns True si l'initialisation est réussie, false sinon
+     */
+    initializeHomePage: async (): Promise<boolean> => {
+        try {
+            // Vérifier si une page d'accueil existe déjà
+            const existingPages = await cmsService.getAllPages(true);
+            const homePage = existingPages.find(page => page.isHomepage);
+            const homeSlugPage = existingPages.find(page => page.slug === "home");
+
+            // Préparer le contenu de la page
+            const pageContent = {
+                title: "Accueil",
+                content: "",
+                metaTitle: "Flowery Haven - Fleurs fraîches et arrangements floraux",
+                metaDescription: "Boutique en ligne de fleurs fraîches, bouquets et arrangements floraux pour toutes les occasions.",
+                published: true,
+                type: "page" as PageContent["type"],
+                isHomepage: true
+            };
+
+            // Obtenir le template d'accueil
+            const homeTemplate = cmsEditorService.getPageTemplates().find(t => t.id === 'template-homepage');
+            if (!homeTemplate) {
+                console.error("Template d'accueil non trouvé");
+                return false;
+            }
+
+            // Générer le contenu avec les composants
+            const templateComponents = homeTemplate.components;
+            let content = "";
+
+            templateComponents.forEach(component => {
+                const componentData = {
+                    content: component.content,
+                    settings: component.settings
+                };
+
+                content += `\n<!-- component:${component.id}:${component.order}:${JSON.stringify(componentData)} -->`;
+            });
+
+            // Si une page d'accueil existe déjà, la mettre à jour
+            if (homePage) {
+                console.log(`Page d'accueil existante trouvée (ID: ${homePage.id})`);
+                
+                try {
+                    // Ne pas essayer de changer le slug lors de la mise à jour
+                    // mais conserver celui qui existe déjà
+                    await cmsService.updatePage(homePage.id, {
+                        ...pageContent,
+                        slug: homePage.slug, // Garder le slug actuel
+                        content
+                    });
+                    console.log(`Page d'accueil mise à jour avec succès (slug conservé: ${homePage.slug})`);
+                } catch (updateError) {
+                    console.error("Erreur lors de la mise à jour de la page d'accueil:", updateError);
+                    // Une tentative alternative sans modifier le contenu
+                    try {
+                        await cmsService.updatePage(homePage.id, {
+                            title: pageContent.title,
+                            metaTitle: pageContent.metaTitle,
+                            metaDescription: pageContent.metaDescription,
+                            published: pageContent.published,
+                            isHomepage: pageContent.isHomepage
+                        });
+                        console.log("Page d'accueil mise à jour partiellement (sans contenu)");
+                    } catch (fallbackError) {
+                        console.error("Échec de la mise à jour partielle de la page d'accueil:", fallbackError);
                     }
-                );
-                console.log("Bannière créée:", bannerComponent.id);
+                }
+            } 
+            // Si une page avec le slug 'home' existe mais n'est pas marquée comme page d'accueil
+            else if (homeSlugPage) {
+                console.log(`Une page avec le slug 'home' existe déjà (ID: ${homeSlugPage.id}). Mise à jour pour en faire la page d'accueil.`);
+                
+                try {
+                    await cmsService.updatePage(homeSlugPage.id, {
+                        ...pageContent,
+                        slug: homeSlugPage.slug, // Garder le slug actuel
+                        content,
+                        isHomepage: true
+                    });
+                    console.log(`Page existante mise à jour et définie comme page d'accueil (slug: ${homeSlugPage.slug})`);
+                } catch (updateError) {
+                    console.error("Erreur lors de la mise à jour de la page avec slug 'home':", updateError);
+                }
+            } 
+            // Sinon, créer une nouvelle page d'accueil
+            else {
+                // Générer un slug unique pour éviter les collisions
+                const uniqueSlug = `home-${Date.now()}`;
+                
+                try {
+                    // Créer une nouvelle page
+                    const newPage = await cmsService.createPage(
+                        pageContent.title,
+                        uniqueSlug, // Utiliser un slug unique
+                        content,
+                        {
+                            metaTitle: pageContent.metaTitle,
+                            metaDescription: pageContent.metaDescription,
+                            published: pageContent.published,
+                            type: pageContent.type,
+                            isHomepage: pageContent.isHomepage
+                        }
+                    );
 
-                // Création du composant de promotion
-                const promotionComponent = await cmsService.createComponent(
-                    "Promotions en cours",
-                    "promotion",
-                    {
-                        title: "Nos offres spéciales",
-                        subtitle: "Profitez de nos promotions pour embellir votre intérieur",
-                        showPromoCodes: true,
-                        showPromotions: true,
-                        maxItems: 3,
-                        buttonText: "Voir toutes les promotions",
-                        buttonLink: "/promotions"
-                    },
-                    {
-                        backgroundColor: "#f9fafb",
-                        accentColor: "#10b981",
-                        displayType: "grid",
-                        showExpiryDate: true,
-                        paddingY: "py-12"
+                    if (!newPage) {
+                        console.error("Échec de création de la page d'accueil");
+                        return false;
                     }
-                );
-                console.log("Composant promotion créé:", promotionComponent.id);
 
-                // Création du composant de newsletter
-                const newsletterComponent = await cmsService.createComponent(
-                    "Newsletter",
-                    "newsletter",
-                    {
-                        title: "Restez informé",
-                        description: "Abonnez-vous à notre newsletter pour recevoir nos actualités et offres exclusives",
-                        buttonText: "S'abonner"
-                    },
-                    {
-                        layout: "stacked",
-                        backgroundColor: "#f3f4f6"
+                    console.log(`Nouvelle page d'accueil créée avec succès (slug: ${uniqueSlug})`);
+                } catch (createError) {
+                    console.error("Erreur lors de la création de la page d'accueil:", createError);
+                    return false;
+                }
+            }
+
+            return true;
+        } catch (error) {
+            console.error("Erreur lors de l'initialisation de la page d'accueil:", error);
+            return false;
+        }
+    },
+
+    /**
+     * Initialise la page À propos
+     * @returns True si l'initialisation est réussie, false sinon
+     */
+    initializeAboutPage: async (): Promise<boolean> => {
+        try {
+            // Vérifier si la page existe déjà
+            const existingPages = await cmsService.getAllPages(true);
+            const aboutPage = existingPages.find(page => page.slug === "about");
+
+            // Préparer le contenu de la page
+            const pageContent = {
+                title: "À propos",
+                content: "",
+                metaTitle: "À propos de Flowery Haven - Notre histoire et nos valeurs",
+                metaDescription: "Découvrez l'histoire de Flowery Haven, notre passion pour l'art floral et notre engagement envers la qualité et le développement durable.",
+                published: true,
+                type: "page" as PageContent["type"],
+                isHomepage: false
+            };
+
+            // Obtenir le template
+            const aboutTemplate = cmsEditorService.getPageTemplates().find(t => t.id === 'template-about');
+            if (!aboutTemplate) {
+                console.error("Template À propos non trouvé");
+                return false;
+            }
+
+            // Générer le contenu avec les composants
+            const templateComponents = aboutTemplate.components;
+            let content = "";
+
+            templateComponents.forEach(component => {
+                const componentData = {
+                    content: component.content,
+                    settings: component.settings
+                };
+
+                content += `\n<!-- component:${component.id}:${component.order}:${JSON.stringify(componentData)} -->`;
+            });
+
+            // Si la page existe déjà, la mettre à jour
+            if (aboutPage) {
+                try {
+                    await cmsService.updatePage(aboutPage.id, {
+                        ...pageContent,
+                        slug: aboutPage.slug, // Conserver le slug existant
+                        content
+                    });
+                    console.log(`Page À propos mise à jour avec succès (slug: ${aboutPage.slug})`);
+                } catch (updateError) {
+                    console.error("Erreur lors de la mise à jour de la page À propos:", updateError);
+                }
+            } else {
+                // Créer une nouvelle page avec un slug unique
+                const uniqueSlug = `about-${Date.now()}`;
+                
+                try {
+                    const newPage = await cmsService.createPage(
+                        pageContent.title,
+                        uniqueSlug, // Utiliser un slug unique
+                        content,
+                        {
+                            metaTitle: pageContent.metaTitle,
+                            metaDescription: pageContent.metaDescription,
+                            published: pageContent.published,
+                            type: pageContent.type,
+                            isHomepage: pageContent.isHomepage
+                        }
+                    );
+
+                    if (!newPage) {
+                        console.error("Échec de création de la page À propos");
+                        return false;
                     }
-                );
-                console.log("Newsletter créée:", newsletterComponent.id);
 
-                // Création d'un slider
-                const sliderComponent = await cmsService.createComponent(
-                    "Slider promotionnel",
-                    "slider",
-                    {
-                        slides: [
+                    console.log(`Nouvelle page À propos créée avec succès (slug: ${uniqueSlug})`);
+                } catch (createError) {
+                    console.error("Erreur lors de la création de la page À propos:", createError);
+                    return false;
+                }
+            }
+
+            return true;
+        } catch (error) {
+            console.error("Erreur lors de l'initialisation de la page À propos:", error);
+            return false;
+        }
+    },
+
+    /**
+     * Initialise la page Réalisations
+     * @returns True si l'initialisation est réussie, false sinon
+     */
+    initializeRealisationsPage: async (): Promise<boolean> => {
+        try {
+            // Vérifier si la page existe déjà
+            const existingPages = await cmsService.getAllPages(true);
+            const realisationsPage = existingPages.find(page => page.slug === "realisations");
+
+            // Préparer le contenu de la page avec des sections commentaires
+            const pageContent = {
+                title: "Nos Réalisations",
+                content: "",
+                metaTitle: "Nos Réalisations - Projets floraux et événements",
+                metaDescription: "Découvrez nos créations florales pour des événements uniques et prestigieux. Chaque projet raconte une histoire et reflète notre passion pour l'art floral.",
+                published: true,
+                type: "page" as PageContent["type"],
+                isHomepage: false
+            };
+
+            // Créer des composants spécifiques pour la page Réalisations
+            const components = [
+                {
+                    id: `testimonials-realisations-${Date.now()}`,
+                    type: 'testimonials',
+                    order: 10,
+                    content: {
+                        title: "Témoignages de nos clients",
+                        description: "Découvrez ce que nos clients disent de nos réalisations",
+                        testimonials: [
                             {
-                                title: "Collection printemps",
-                                description: "Découvrez notre nouvelle collection de saison",
-                                image: "https://images.unsplash.com/photo-1469259943454-aa100abba749?q=80&w=2070"
+                                text: "ChezFlora a transformé notre mariage en un véritable conte de fées floral. Les compositions étaient à couper le souffle et ont parfaitement reflété notre vision. Un grand merci à toute l'équipe pour leur talent et leur professionnalisme.",
+                                author: "Marie et Pierre Durand",
+                                role: "Mariage à Bordeaux"
                             },
                             {
-                                title: "Livraison gratuite",
-                                description: "Pour toute commande supérieure à 50€",
-                                image: "https://images.unsplash.com/photo-1490750967868-88aa4486c946?q=80&w=2070"
+                                text: "Pour l'inauguration de notre boutique, nous voulions créer une ambiance élégante et raffinée. ChezFlora a su capturer l'essence de notre marque à travers des arrangements floraux spectaculaires qui ont fait sensation auprès de nos invités.",
+                                author: "Émilie Laurent",
+                                role: "Directrice marketing, Maison de Beauté"
                             },
                             {
-                                title: "Service personnalisé",
-                                description: "Nos fleuristes créent des compositions sur-mesure",
-                                image: "https://images.unsplash.com/photo-1508610048659-a06b669e3321?q=80&w=2070"
+                                text: "Je fais appel à ChezFlora pour tous les événements d'entreprise que j'organise. Leur créativité, leur fiabilité et leur capacité à s'adapter à différents thèmes et budgets font d'eux un partenaire incontournable.",
+                                author: "Thomas Moreau",
+                                role: "Responsable événementiel, Groupe Horizon"
                             }
                         ]
                     },
-                    {
+                    settings: {
+                        layout: "slider",
+                        slidesToShow: 1,
+                        autoplay: true,
+                        showDots: true,
+                        backgroundColor: "#f8f9fa",
+                        textColor: "#000000",
+                        rounded: true,
+                        shadow: true
+                    }
+                },
+                {
+                    id: `slider-realisations-${Date.now()}`,
+                    type: 'slider',
+                    order: 20,
+                    content: {
+                        slides: [
+                            {
+                                title: "Mariage au Château des Vignes",
+                                description: "Décoration florale complète pour un mariage de 150 invités",
+                                image: "https://images.unsplash.com/photo-1519225421980-715cb0215aed?q=80&w=2070",
+                                buttonText: "Voir le projet",
+                                buttonLink: "/realisations"
+                            },
+                            {
+                                title: "Gala de charité Lumière d'Espoir",
+                                description: "Arrangements floraux pour 25 tables et décoration de salle",
+                                image: "https://images.unsplash.com/photo-1511795409834-ef04bbd61622?q=80&w=1769",
+                                buttonText: "Voir le projet",
+                                buttonLink: "/realisations"
+                            },
+                            {
+                                title: "Ouverture boutique Élégance",
+                                description: "Création d'une ambiance luxueuse avec des compositions florales modernes",
+                                image: "https://images.unsplash.com/photo-1561908858-91148bc208d9?q=80&w=1935",
+                                buttonText: "Voir le projet",
+                                buttonLink: "/realisations"
+                            }
+                        ]
+                    },
+                    settings: {
                         autoplay: true,
                         interval: 5000,
-                        showDots: true
+                        showDots: true,
+                        showArrows: true,
+                        fullWidth: true,
+                        height: "large",
+                        animation: "fade"
                     }
-                );
-                console.log("Slider créé:", sliderComponent.id);
-
-                console.log("Composants CMS initialisés avec succès");
-            } else {
-                console.log("Des composants CMS existent déjà, initialisation ignorée");
-            }
-
-            return true;
-        } catch (error) {
-            console.error("Erreur lors de l'initialisation des composants CMS:", error);
-            return false;
-        }
-    },
-
-    
-
-    /**
-     * Initialise un code promo de bienvenue
-     */
-    initializeWelcomePromoCode: async () => {
-        try {
-            // Vérifier si des codes promo existent déjà
-            let existingCodes = [];
-            try {
-                existingCodes = await promotionService.getAllPromoCodes();
-            } catch (error) {
-                console.warn("Erreur lors de la récupération des codes promo, création de nouveaux codes:", error);
-            }
-
-            if (existingCodes.length === 0) {
-                try {
-                    console.log("Création des codes promo de bienvenue...");
-                    const startDate = new Date();
-                    const endDate = new Date();
-                    endDate.setMonth(endDate.getMonth() + 3); // Valable 3 mois
-
-                    // Code promo de bienvenue
-                    await promotionService.createPromoCode(
-                        "BIENVENUE",
-                        "percentage",
-                        10,
-                        startDate,
-                        endDate,
-                        {
-                            description: "10% de réduction sur votre première commande",
-                            minPurchase: 30,
-                            isActive: true,
-                            singleUse: true
-                        }
-                    );
-
-                    // Code promo livraison gratuite
-                    await promotionService.createPromoCode(
-                        "LIVRAISON",
-                        "free_shipping",
-                        0,
-                        startDate,
-                        endDate,
-                        {
-                            description: "Livraison gratuite sans minimum d'achat",
-                            isActive: true
-                        }
-                    );
-
-                    // Code promo bouquet
-                    await promotionService.createPromoCode(
-                        "BOUQUET10",
-                        "fixed",
-                        10,
-                        startDate,
-                        endDate,
-                        {
-                            description: "10€ de réduction sur nos bouquets",
-                            minPurchase: 50,
-                            isActive: true,
-                            productCategories: ["bouquets"]
-                        }
-                    );
-
-                    console.log("Codes promo de bienvenue créés avec succès");
-                } catch (error) {
-                    console.error("Erreur lors de la création des codes promo:", error);
-                    // Continue malgré l'erreur
+                },
+                {
+                    id: `text-realisations-${Date.now()}`,
+                    type: 'text',
+                    order: 0,
+                    content: {
+                        title: "Notre expertise en décoration événementielle",
+                        subtitle: "Des créations florales pour tous vos moments importants",
+                        text: "<p>ChezFlora vous propose des créations florales sur mesure pour tous vos événements, qu'il s'agisse d'un mariage, d'une inauguration d'entreprise, d'un gala ou d'une fête privée. Notre équipe de fleuristes passionnés travaille étroitement avec vous pour comprendre votre vision et créer des arrangements qui reflètent parfaitement l'atmosphère que vous souhaitez instaurer.</p><p>Nous accordons une attention particulière à chaque détail, de la sélection des fleurs les plus fraîches à la conception d'arrangements qui s'intègrent harmonieusement à votre espace. Parcourez notre galerie de réalisations pour vous inspirer et n'hésitez pas à nous contacter pour discuter de votre projet.</p>",
+                        alignment: "center"
+                    },
+                    settings: {
+                        fullWidth: false,
+                        backgroundColor: "#ffffff",
+                        textColor: "#000000",
+                        padding: true,
+                        maxWidth: "lg"
+                    }
                 }
-            } else {
-                console.log("Des codes promo existent déjà, initialisation ignorée");
-            }
+            ];
 
-            return true;
-        } catch (error) {
-            console.error("Erreur lors de l'initialisation des codes promo:", error);
-            return false;
-        }
-    },
+            // Générer le contenu avec les composants
+            let content = "";
+            components.forEach(component => {
+                const componentData = {
+                    content: component.content,
+                    settings: component.settings
+                };
 
-    /**
-     * Ajoute des composants CMS à la page d'accueil
-     */
-    setupHomePage: async () => {
-        try {
-            // Récupérer la page d'accueil
-            const homePage = await cmsFrontendService.getHomePage();
-
-            if (!homePage) {
-                console.error("Page d'accueil non trouvée");
-                return false;
-            }
-
-            // Récupérer tous les composants
-            const components = await cmsService.getAllComponents();
-
-            if (components.length === 0) {
-                console.error("Aucun composant CMS trouvé");
-                return false;
-            }
-
-            // Vérifier si la page contient déjà des composants
-            const existingComponents = cmsFrontendService.parsePageComponents(homePage.content);
-
-            if (existingComponents.length > 0) {
-                console.log("La page d'accueil contient déjà des composants, configuration ignorée");
-                return true;
-            }
-
-            // Trouver les composants par type
-            const bannerComponent = components.find(c => c.type === 'banner');
-            const sliderComponent = components.find(c => c.type === 'slider');
-            const promotionComponent = components.find(c => c.type === 'promotion');
-            const newsletterComponent = components.find(c => c.type === 'newsletter');
-
-            // Nouveau contenu de la page avec les balises de composants et zones
-            let newContent = homePage.content || '';
-
-            // Ajouter les composants dans l'ordre avec leurs zones
-            if (bannerComponent) {
-                newContent += `\n<!-- component:${bannerComponent.id}:10:{"zone":"top"} -->`;
-            }
-
-            if (promotionComponent) {
-                newContent += `\n<!-- component:${promotionComponent.id}:20:{"zone":"promotions"} -->`;
-            }
-
-            if (sliderComponent) {
-                newContent += `\n<!-- component:${sliderComponent.id}:30:{"zone":"middle"} -->`;
-            }
-
-            if (newsletterComponent) {
-                newContent += `\n<!-- component:${newsletterComponent.id}:40:{"zone":"bottom"} -->`;
-            }
-
-            // Mettre à jour la page
-            await cmsService.updatePage(homePage.id, {
-                content: newContent
+                content += `\n<!-- component:${component.id}:${component.order}:${JSON.stringify(componentData)} -->`;
             });
 
-            console.log("Page d'accueil configurée avec succès");
-            return true;
-        } catch (error) {
-            console.error("Erreur lors de la configuration de la page d'accueil:", error);
-            return false;
-        }
-    },
-
-    /**
-     * Initialise tout le système CMS
-     */
-    initializeAll: async () => {
-        try {
-            console.log("Initialisation complète du système CMS...");
-
-            // Initialiser les pages par défaut
-            await cmsService.initDefaultPages();
-            console.log("Pages par défaut initialisées");
-
-            // Initialiser les composants
-            const componentsInitialized = await cmsInitializer.initializeDefaultComponents();
-            console.log("Composants initialisés:", componentsInitialized);
-
-            // Initialiser les codes promo
-            const promoCodesInitialized = await cmsInitializer.initializeWelcomePromoCode();
-            console.log("Codes promo initialisés:", promoCodesInitialized);
-
-            // Configurer la page d'accueil avec les composants
-            const homePageSetup = await cmsInitializer.setupHomePage();
-            console.log("Page d'accueil configurée:", homePageSetup);
-
-            console.log("Système CMS initialisé avec succès");
-            return true;
-        } catch (error) {
-            console.error("Erreur lors de l'initialisation du système CMS:", error);
-            return false;
-        }
-    },
-
-    /**
-     * Vérifie et corrige les problèmes connus avec la configuration
-     */
-    fixCommonIssues: async () => {
-        try {
-            console.log("Vérification et correction des problèmes connus...");
-
-            // 1. Vérifier et corriger les pages sans composants
-            const homePage = await cmsFrontendService.getHomePage();
-            if (homePage) {
-                const components = cmsFrontendService.parsePageComponents(homePage.content);
-                if (components.length === 0) {
-                    console.log("Page d'accueil sans composants, ajout des composants...");
-                    await cmsInitializer.setupHomePage();
+            // Si la page existe déjà, la mettre à jour
+            if (realisationsPage) {
+                try {
+                    await cmsService.updatePage(realisationsPage.id, {
+                        ...pageContent,
+                        slug: realisationsPage.slug, // Conserver le slug existant
+                        content
+                    });
+                    console.log(`Page Réalisations mise à jour avec succès (slug: ${realisationsPage.slug})`);
+                } catch (updateError) {
+                    console.error("Erreur lors de la mise à jour de la page Réalisations:", updateError);
                 }
-            }
+            } else {
+                // Créer une nouvelle page avec un slug unique
+                const uniqueSlug = `realisations-${Date.now()}`;
+                
+                try {
+                    const newPage = await cmsService.createPage(
+                        pageContent.title,
+                        uniqueSlug, // Utiliser un slug unique
+                        content,
+                        {
+                            metaTitle: pageContent.metaTitle,
+                            metaDescription: pageContent.metaDescription,
+                            published: pageContent.published,
+                            type: pageContent.type,
+                            isHomepage: pageContent.isHomepage
+                        }
+                    );
 
-            // 2. Vérifier si des composants de promotion existent
-            const components = await cmsService.getAllComponents();
-            const hasPromotion = components.some(c => c.type === 'promotion');
-
-            if (!hasPromotion) {
-                console.log("Aucun composant de promotion trouvé, création...");
-                await cmsService.createComponent(
-                    "Promotions en cours",
-                    "promotion",
-                    {
-                        title: "Nos offres spéciales",
-                        subtitle: "Profitez de nos promotions pour embellir votre intérieur",
-                        showPromoCodes: true,
-                        showPromotions: true,
-                        maxItems: 3,
-                        buttonText: "Voir toutes les promotions",
-                        buttonLink: "/promotions"
-                    },
-                    {
-                        backgroundColor: "#f9fafb",
-                        accentColor: "#10b981",
-                        displayType: "grid",
-                        showExpiryDate: true,
-                        paddingY: "py-12"
+                    if (!newPage) {
+                        console.error("Échec de création de la page Réalisations");
+                        return false;
                     }
-                );
-            }
 
-            // 3. Vérifier les codes promo
-            try {
-                const promoCodes = await promotionService.getAllPromoCodes();
-                if (promoCodes.length === 0) {
-                    console.log("Aucun code promo trouvé, initialisation...");
-                    await cmsInitializer.initializeWelcomePromoCode();
+                    console.log(`Nouvelle page Réalisations créée avec succès (slug: ${uniqueSlug})`);
+                } catch (createError) {
+                    console.error("Erreur lors de la création de la page Réalisations:", createError);
+                    return false;
                 }
-            } catch (error) {
-                console.error("Erreur lors de la vérification des codes promo:", error);
             }
 
-            console.log("Vérification et correction terminées");
             return true;
         } catch (error) {
-            console.error("Erreur lors de la correction des problèmes:", error);
+            console.error("Erreur lors de l'initialisation de la page Réalisations:", error);
             return false;
         }
-    },
-    
+    }
 };
+
+export default cmsInitializer;

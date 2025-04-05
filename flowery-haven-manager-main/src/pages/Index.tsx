@@ -25,7 +25,10 @@ const Index = () => {
   const [error, setError] = useState<string | null>(null);
   const [homePage, setHomePage] = useState<PageContent | null>(null);
   const [contentComponents, setContentComponents] = useState<EmbeddedComponent[]>([]);
-  const [useFallback, setUseFallback] = useState(false);
+  
+  // Nouvelle approche: toujours afficher le contenu statique par défaut
+  // sauf si explicitement désactivé
+  const [showStaticContent, setShowStaticContent] = useState(true);
 
   useEffect(() => {
     const loadHomePage = async () => {
@@ -38,7 +41,6 @@ const Index = () => {
 
         if (!page) {
           console.log("Aucune page d'accueil trouvée dans le CMS, utilisation du contenu de secours");
-          setUseFallback(true);
           setLoading(false);
           return;
         }
@@ -48,74 +50,42 @@ const Index = () => {
         // Analyse le contenu de la page pour trouver les composants intégrés
         const components: EmbeddedComponent[] = [];
 
-        // Si le contenu est un simple HTML, on le traite comme un composant "html"
-        if (typeof page.content === "string" && !page.content.includes('"type"')) {
-          components.push({
-            id: "content-html",
-            type: "html",
-            content: { html: page.content },
-            settings: { fullWidth: false },
+        // Utiliser le service pour extraire les composants du contenu
+        const pageComponents = cmsFrontendService.parsePageComponents(page.content);
+        
+        // Récupérer les données complètes de chaque composant
+        if (pageComponents.length > 0) {
+          const componentsPromises = pageComponents.map(async (comp) => {
+            try {
+              const componentData = await cmsFrontendService.getComponentData(comp.id, comp.options);
+              if (!componentData) return null;
+              
+              return {
+                id: comp.id,
+                type: componentData.type,
+                content: componentData.content,
+                settings: componentData.settings
+              };
+            } catch (error) {
+              console.error(`Erreur lors du chargement du composant ${comp.id}:`, error);
+              return null;
+            }
           });
-        }
-        // Si le contenu est un objet JSON avec des composants
-        else {
-          try {
-            let pageContent;
-
-            // Tenter de parser le contenu comme JSON si c'est une chaîne
-            if (typeof page.content === "string") {
-              pageContent = JSON.parse(page.content);
-            } else {
-              pageContent = page.content;
-            }
-
-            // Si c'est un tableau de composants
-            if (Array.isArray(pageContent)) {
-              pageContent.forEach((comp, index) => {
-                if (comp.type && (comp.content || comp.settings)) {
-                  components.push({
-                    id: comp.id || `embedded-${index}`,
-                    type: comp.type,
-                    content: comp.content || {},
-                    settings: comp.settings || {},
-                  });
-                }
-              });
-            }
-            // Si c'est un objet avec des sections de composants
-            else if (pageContent && pageContent.components) {
-              const pageComponents = Array.isArray(pageContent.components)
-                ? pageContent.components
-                : [pageContent.components];
-
-              pageComponents.forEach((comp, index) => {
-                if (comp.type) {
-                  components.push({
-                    id: comp.id || `component-${index}`,
-                    type: comp.type,
-                    content: comp.content || {},
-                    settings: comp.settings || {},
-                  });
-                }
-              });
-            }
-          } catch (e) {
-            console.error("Erreur lors de l'analyse du contenu JSON:", e);
-            // En cas d'échec du parsing, on traite le contenu comme HTML
-            components.push({
-              id: "content-html-fallback",
-              type: "html",
-              content: { html: page.content },
-              settings: { fullWidth: false },
-            });
+          
+          const loadedComponents = await Promise.all(componentsPromises);
+          const validComponents = loadedComponents.filter((comp): comp is EmbeddedComponent => comp !== null);
+          
+          setContentComponents(validComponents);
+          
+          // IMPORTANT: Modification ici - Ne désactivez pas le contenu statique
+          // Si une configuration explicite existe dans le contenu de la page pour cacher le contenu statique
+          if (page.content && page.content.includes('"hideStaticContent":true')) {
+            setShowStaticContent(false);
           }
         }
-
-        setContentComponents(components);
       } catch (err) {
         console.error("Erreur lors du chargement de la page d'accueil:", err);
         setError("Une erreur est survenue lors du chargement de la page");
-        setUseFallback(true);
       } finally {
         setLoading(false);
       }
@@ -125,8 +95,8 @@ const Index = () => {
   }, []);
 
   // Contenu de secours (original)
-  const renderFallbackContent = () => (
-    <main>
+  const renderStaticContent = () => (
+    <>
       <Hero />
 
       <FeaturedProducts />
@@ -294,7 +264,7 @@ const Index = () => {
           </div>
         </div>
       </section>
-    </main>
+    </>
   );
 
   return (
@@ -311,25 +281,27 @@ const Index = () => {
           <p className="text-gray-600 mb-6">
             Désolé, la page demandée n'est pas disponible.
           </p>
-          {renderFallbackContent()}
+          {renderStaticContent()}
         </div>
-      ) : useFallback ? (
-        renderFallbackContent()
       ) : (
-        <main className="cms-page">
-          {/* Rendre chaque composant identifié dans le contenu */}
-          {contentComponents.map((component) => (
-            <div key={component.id} className="mb-8">
-              <ComponentRenderer
-                type={component.type}
-                content={component.content}
-                settings={component.settings}
-              />
-            </div>
-          ))}
-
-          {/* Afficher un message si aucun composant n'est trouvé */}
-          {contentComponents.length === 0 && renderFallbackContent()}
+        <main>
+          {/* Zone de composants CMS - Toujours affichée si présents */}
+          {contentComponents.length > 0 && (
+            <section className="cms-content mb-12">
+              {contentComponents.map((component) => (
+                <div key={component.id} className="mb-8">
+                  <ComponentRenderer
+                    type={component.type}
+                    content={component.content}
+                    settings={component.settings}
+                  />
+                </div>
+              ))}
+            </section>
+          )}
+          
+          {/* Contenu statique - Affiché par défaut ou selon configuration */}
+          {showStaticContent && renderStaticContent()}
         </main>
       )}
 

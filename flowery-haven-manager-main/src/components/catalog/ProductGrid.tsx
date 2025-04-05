@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Product } from '@/types/product';
 import ProductCard from '@/components/shared/ProductCard';
 import { Grid, List, SlidersHorizontal } from 'lucide-react';
@@ -15,11 +15,12 @@ import {
 interface ProductGridProps {
   products: Product[];
   isLoading?: boolean;
+  onResetFilters?: () => void; // Ajout d'une fonction pour réinitialiser les filtres
 }
 
 type ViewMode = 'grid' | 'list';
 
-const ProductGrid = ({ products, isLoading = false }: ProductGridProps) => {
+const ProductGrid = ({ products, isLoading = false, onResetFilters }: ProductGridProps) => {
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   
   if (isLoading) {
@@ -44,7 +45,17 @@ const ProductGrid = ({ products, isLoading = false }: ProductGridProps) => {
         <p className="text-muted-foreground text-center max-w-md mb-4">
           Nous n'avons trouvé aucun produit correspondant à vos critères de recherche. Essayez d'ajuster vos filtres.
         </p>
-        <Button variant="outline" onClick={() => window.location.reload()}>
+        <Button 
+          variant="outline" 
+          onClick={() => {
+            // Utiliser la fonction passée en prop si disponible, sinon recharger la page
+            if (onResetFilters) {
+              onResetFilters();
+            } else {
+              window.location.reload();
+            }
+          }}
+        >
           Réinitialiser les filtres
         </Button>
       </div>
@@ -61,7 +72,7 @@ const ProductGrid = ({ products, isLoading = false }: ProductGridProps) => {
         <div className="flex items-center gap-2">
           <div className="hidden md:flex border rounded-md overflow-hidden">
             <Button
-              variant="ghost"
+              variant={viewMode === 'grid' ? 'default' : 'ghost'}
               size="icon"
               className={`rounded-none ${viewMode === 'grid' ? 'bg-muted' : ''}`}
               onClick={() => setViewMode('grid')}
@@ -70,7 +81,7 @@ const ProductGrid = ({ products, isLoading = false }: ProductGridProps) => {
               <Grid size={16} />
             </Button>
             <Button
-              variant="ghost"
+              variant={viewMode === 'list' ? 'default' : 'ghost'}
               size="icon"
               className={`rounded-none ${viewMode === 'list' ? 'bg-muted' : ''}`}
               onClick={() => setViewMode('list')}
@@ -121,6 +132,9 @@ const ProductGrid = ({ products, isLoading = false }: ProductGridProps) => {
                   src={product.images[0]} 
                   alt={product.name}
                   className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = "/assets/placeholder.png";
+                  }}
                 />
               </div>
               <div className="p-4 sm:p-6 flex flex-col flex-grow">

@@ -3,11 +3,13 @@ import React, { useState, useEffect } from 'react';
 import { DragDropContext, DropResult } from 'react-beautiful-dnd';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { Save, EyeIcon, Trash2, Plus } from 'lucide-react';
+import { Save, EyeIcon, Trash2, Plus, AlertTriangle } from 'lucide-react';
 import ComponentPalette from './ComponentPalette';
 import DropZone from './DropZone';
 import ComponentSettings from './ComponentSettings';
 import { cmsService } from '@/services/cms.service';
+import { cmsFrontendService } from '@/services/cms-frontend.service';
+import { cmsEditorService } from '@/services/cms-editor.service';
 import { 
   Dialog,
   DialogContent,
@@ -15,6 +17,17 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { 
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogFooter
+} from "@/components/ui/alert-dialog";
+import TemplateLibrary from './TemplateLibrary';
 
 // Types pour les composants
 export interface ComponentItem {
@@ -39,14 +52,62 @@ const DragDropEditor: React.FC<DragDropEditorProps> = ({
   const [components, setComponents] = useState<ComponentItem[]>(initialComponents);
   const [selectedComponent, setSelectedComponent] = useState<ComponentItem | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [hasChanges, setHasChanges] = useState<boolean>(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState<boolean>(false);
+  const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState<boolean>(false);
+  const [componentToDelete, setComponentToDelete] = useState<string | null>(null);
   const [previewContent, setPreviewContent] = useState<string>('');
+  const [autoSave, setAutoSave] = useState<boolean>(false);
+  const [showEmptyState, setShowEmptyState] = useState<boolean>(false);
 
   useEffect(() => {
     // Trier les composants par ordre
     const sortedComponents = [...initialComponents].sort((a, b) => a.order - b.order);
     setComponents(sortedComponents);
+    
+    // Si aucun composant, montrer l'état vide après 1 seconde
+    if (initialComponents.length === 0) {
+      const timer = setTimeout(() => {
+        setShowEmptyState(true);
+      }, 1000);
+      return () => clearTimeout(timer);
+    } else {
+      setShowEmptyState(false);
+    }
   }, [initialComponents]);
+
+  // Détection des changements
+  useEffect(() => {
+    if (components.length !== initialComponents.length) {
+      setHasChanges(true);
+      return;
+    }
+
+    // Comparer les composants
+    const sortedInitial = [...initialComponents].sort((a, b) => a.order - b.order);
+    const sortedCurrent = [...components].sort((a, b) => a.order - b.order);
+    
+    for (let i = 0; i < sortedCurrent.length; i++) {
+      if (JSON.stringify(sortedCurrent[i]) !== JSON.stringify(sortedInitial[i])) {
+        setHasChanges(true);
+        return;
+      }
+    }
+    
+    setHasChanges(false);
+  }, [components, initialComponents]);
+
+  // AutoSave toutes les 2 minutes si autoSave est activé et s'il y a des changements
+  useEffect(() => {
+    if (!autoSave || !hasChanges) return;
+    
+    const interval = setInterval(() => {
+      handleSave(true); // Le paramètre true indique un autoSave silencieux
+    }, 120000); // 2 minutes
+    
+    return () => clearInterval(interval);
+  }, [autoSave, hasChanges, components]);
 
   // Gestion du drag-and-drop
   const handleDragEnd = (result: DropResult) => {
@@ -68,24 +129,29 @@ const DragDropEditor: React.FC<DragDropEditorProps> = ({
       // Récupérer le composant depuis la palette
       const componentType = draggableId.split('-')[0];
       
-      // Créer une nouvelle instance du composant
-      const newComponent: ComponentItem = {
-        id: `${componentType}-${Date.now()}`,
-        type: componentType,
-        content: getDefaultContent(componentType),
-        settings: getDefaultSettings(componentType),
-        order: destination.index * 10
-      };
+      try {
+        // Créer une nouvelle instance du composant
+        const newComponent: ComponentItem = {
+          id: `${componentType}-${Date.now()}`,
+          type: componentType,
+          content: getDefaultContent(componentType),
+          settings: getDefaultSettings(componentType),
+          order: destination.index * 10
+        };
 
-      // Ajouter à la liste des composants
-      const newComponents = [...components];
-      newComponents.splice(destination.index, 0, newComponent);
-      
-      // Mettre à jour les ordres
-      updateComponentsOrder(newComponents);
-      
-      // Sélectionner automatiquement le nouveau composant pour édition
-      setSelectedComponent(newComponent);
+        // Ajouter à la liste des composants
+        const newComponents = [...components];
+        newComponents.splice(destination.index, 0, newComponent);
+        
+        // Mettre à jour les ordres
+        updateComponentsOrder(newComponents);
+        
+        // Sélectionner automatiquement le nouveau composant pour édition
+        setSelectedComponent(newComponent);
+      } catch (error) {
+        console.error("Erreur lors de la création d'un nouveau composant:", error);
+        toast.error("Erreur lors de l'ajout du composant");
+      }
       
       return;
     }
@@ -111,79 +177,98 @@ const DragDropEditor: React.FC<DragDropEditorProps> = ({
     }));
     
     setComponents(updatedComponents);
+    setHasChanges(true);
   };
 
   // Obtenir le contenu par défaut selon le type de composant
   const getDefaultContent = (type: string): any => {
-    switch (type) {
-      case 'banner':
-        return {
-          title: "Titre de la bannière",
-          subtitle: "Sous-titre de la bannière",
-          image: "/assets/logo.jpeg",
-          buttonText: "En savoir plus",
-          buttonLink: "/collections"
-        };
-      case 'slider':
-        return {
-          slides: [
-            {
-              title: "Collection printemps",
-              description: "Découvrez notre nouvelle collection",
-              image: "/assets/logo.jpeg"
-            },
-            {
-              title: "Livraison gratuite",
-              description: "Pour toute commande supérieure à 50€",
-              image: "/assets/logo.jpeg"
-            }
-          ]
-        };
-      case 'promotion':
-        return {
-          title: "Offre spéciale",
-          subtitle: "Offre limitée dans le temps",
-          description: "Profitez de cette offre exceptionnelle !",
-          image: "/assets/logo.jpeg",
-          backgroundColor: "#ff5252",
-          textColor: "#ffffff",
-          ctaText: "En profiter",
-          ctaLink: "/promotions",
-          discount: "-20%",
-          expiryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-        };
-      default:
-        return {};
+    try {
+      // Utiliser le service pour obtenir les valeurs par défaut
+      const defaults = cmsEditorService.getComponentDefaults(type);
+      return defaults.content;
+    } catch (error) {
+      console.error(`Erreur lors de la récupération des valeurs par défaut pour le type ${type}:`, error);
+      
+      // Valeurs de secours au cas où le service échoue
+      switch (type) {
+        case 'banner':
+          return {
+            title: "Titre de la bannière",
+            subtitle: "Sous-titre de la bannière",
+            image: "/assets/logo.jpeg",
+            buttonText: "En savoir plus",
+            buttonLink: "/collections"
+          };
+        case 'slider':
+          return {
+            slides: [
+              {
+                title: "Collection printemps",
+                description: "Découvrez notre nouvelle collection",
+                image: "/assets/logo.jpeg"
+              },
+              {
+                title: "Livraison gratuite",
+                description: "Pour toute commande supérieure à 50€",
+                image: "/assets/logo.jpeg"
+              }
+            ]
+          };
+        case 'promotion':
+          return {
+            title: "Offre spéciale",
+            subtitle: "Offre limitée dans le temps",
+            description: "Profitez de cette offre exceptionnelle !",
+            image: "/assets/logo.jpeg",
+            backgroundColor: "#ff5252",
+            textColor: "#ffffff",
+            ctaText: "En profiter",
+            ctaLink: "/promotions",
+            discount: "-20%",
+            expiryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+          };
+        default:
+          return {};
+      }
     }
   };
 
   // Obtenir les paramètres par défaut selon le type de composant
   const getDefaultSettings = (type: string): any => {
-    switch (type) {
-      case 'banner':
-        return {
-          fullWidth: true,
-          height: "medium",
-          textColor: "#ffffff"
-        };
-      case 'slider':
-        return {
-          autoplay: true,
-          interval: 5000,
-          showDots: true
-        };
-      case 'promotion':
-        return {
-          fullWidth: true,
-          layout: "horizontal",
-          rounded: true,
-          showBadge: true,
-          badgeText: "PROMO",
-          animateBadge: true,
-          shadow: true
-        };
-      default:
-        return {};
+    try {
+      // Utiliser le service pour obtenir les valeurs par défaut
+      const defaults = cmsEditorService.getComponentDefaults(type);
+      return defaults.settings;
+    } catch (error) {
+      console.error(`Erreur lors de la récupération des paramètres par défaut pour le type ${type}:`, error);
+      
+      // Valeurs de secours au cas où le service échoue
+      switch (type) {
+        case 'banner':
+          return {
+            fullWidth: true,
+            height: "medium",
+            textColor: "#ffffff"
+          };
+        case 'slider':
+          return {
+            autoplay: true,
+            interval: 5000,
+            showDots: true
+          };
+        case 'promotion':
+          return {
+            fullWidth: true,
+            layout: "horizontal",
+            rounded: true,
+            showBadge: true,
+            badgeText: "PROMO",
+            animateBadge: true,
+            shadow: true
+          };
+        default:
+          return {};
+      }
     }
   };
 
@@ -195,18 +280,44 @@ const DragDropEditor: React.FC<DragDropEditorProps> = ({
     
     setComponents(newComponents);
     setSelectedComponent(updatedComponent);
+    setHasChanges(true);
   };
 
   // Supprimer un composant
   const handleDeleteComponent = (componentId: string) => {
-    const newComponents = components.filter(comp => comp.id !== componentId);
+    setComponentToDelete(componentId);
+    setIsConfirmDeleteOpen(true);
+  };
+  
+  // Confirmer la suppression
+  const confirmDeleteComponent = () => {
+    if (!componentToDelete) return;
+    
+    const newComponents = components.filter(comp => comp.id !== componentToDelete);
     updateComponentsOrder(newComponents);
     
-    if (selectedComponent?.id === componentId) {
+    if (selectedComponent?.id === componentToDelete) {
       setSelectedComponent(null);
     }
     
+    setIsConfirmDeleteOpen(false);
+    setComponentToDelete(null);
     toast.success("Composant supprimé");
+    setHasChanges(true);
+  };
+
+  // Ajouter un composant à la liste
+  const handleAddComponent = (component: ComponentItem) => {
+    // Ajouter le composant à la fin de la liste
+    const newComponents = [...components, { 
+      ...component, 
+      order: components.length * 10 
+    }];
+    
+    setComponents(newComponents);
+    setSelectedComponent(component);
+    setHasChanges(true);
+    toast.success(`Composant ${component.type} ajouté`);
   };
 
   // Générer le contenu HTML complet
@@ -232,9 +343,14 @@ const DragDropEditor: React.FC<DragDropEditorProps> = ({
   };
 
   // Enregistrer les modifications
-  const handleSave = async () => {
+  const handleSave = async (silent: boolean = false) => {
+    if (!hasChanges) {
+      if (!silent) toast.info("Aucun changement à enregistrer");
+      return;
+    }
+    
     try {
-      setIsLoading(true);
+      setIsSaving(true);
       
       // Générer le contenu HTML avec les composants
       const newContent = generatePageContent();
@@ -244,7 +360,11 @@ const DragDropEditor: React.FC<DragDropEditorProps> = ({
         content: newContent
       });
       
-      toast.success("Page mise à jour avec succès");
+      setHasChanges(false);
+      
+      if (!silent) {
+        toast.success("Page mise à jour avec succès");
+      }
       
       // Appeler le callback onSave si fourni
       if (onSave) {
@@ -254,7 +374,7 @@ const DragDropEditor: React.FC<DragDropEditorProps> = ({
       console.error("Erreur lors de la sauvegarde:", error);
       toast.error("Erreur lors de la sauvegarde de la page");
     } finally {
-      setIsLoading(false);
+      setIsSaving(false);
     }
   };
 
@@ -264,6 +384,21 @@ const DragDropEditor: React.FC<DragDropEditorProps> = ({
     const previewHTML = generatePreviewHTML();
     setPreviewContent(previewHTML);
     setIsPreviewOpen(true);
+  };
+  
+  // Voir la page dans un nouvel onglet
+  const handleViewLive = () => {
+    // Récupérer la page pour obtenir le slug
+    cmsService.getPageById(pageId).then(page => {
+      if (page) {
+        window.open(`/${page.slug === "home" ? "" : page.slug}`, '_blank');
+      } else {
+        toast.error("Impossible de récupérer le slug de la page");
+      }
+    }).catch(error => {
+      console.error("Erreur lors de la récupération de la page:", error);
+      toast.error("Erreur lors de l'ouverture de la page");
+    });
   };
 
   // Générer le HTML pour la prévisualisation
@@ -322,7 +457,7 @@ const DragDropEditor: React.FC<DragDropEditorProps> = ({
         case 'slider':
           preview += `
             <div style="position: relative; height: 300px; overflow: hidden; margin-bottom: 20px;">
-              ${component.content.slides.map((slide: any, index: number) => `
+              ${component.content.slides?.map((slide: any, index: number) => `
                 <div style="position: absolute; inset: 0; ${index === 0 ? 'opacity: 1' : 'opacity: 0; pointer-events: none'}; transition: opacity 0.5s;">
                   <div style="position: absolute; inset: 0; background-image: url(${slide.image}); background-size: cover; background-position: center;">
                     <div style="position: absolute; inset: 0; background-color: rgba(0,0,0,0.3);"></div>
@@ -333,9 +468,9 @@ const DragDropEditor: React.FC<DragDropEditorProps> = ({
                   </div>
                 </div>
               `).join('')}
-              ${component.settings.showDots && component.content.slides.length > 1 ? `
+              ${component.settings.showDots && component.content.slides?.length > 1 ? `
                 <div style="position: absolute; bottom: 1rem; left: 0; right: 0; display: flex; justify-content: center; gap: 0.5rem;">
-                  ${component.content.slides.map((_: any, index: number) => `
+                  ${component.content.slides?.map((_: any, index: number) => `
                     <button style="width: 0.75rem; height: 0.75rem; border-radius: 50%; background-color: ${index === 0 ? 'white' : 'rgba(255, 255, 255, 0.5)'}; border: none;"></button>
                   `).join('')}
                 </div>
@@ -354,11 +489,47 @@ const DragDropEditor: React.FC<DragDropEditorProps> = ({
     return preview;
   };
 
+  // Appliquer un template de page
+  const handleApplyTemplate = (templateComponents: ComponentItem[]) => {
+    // Demander confirmation si des composants existent déjà
+    if (components.length > 0) {
+      if (!window.confirm("Cela remplacera tous vos composants actuels. Êtes-vous sûr de vouloir continuer ?")) {
+        return;
+      }
+    }
+    
+    // Appliquer le template
+    setComponents(templateComponents);
+    setHasChanges(true);
+    toast.success("Template appliqué avec succès");
+  };
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex justify-between items-center mb-4 p-4 bg-muted/30 rounded-md">
         <h2 className="text-xl font-bold">Éditeur visuel</h2>
         <div className="flex gap-2">
+          <div className="flex items-center mr-2">
+            <Switch 
+              id="autoSave"
+              checked={autoSave}
+              onCheckedChange={setAutoSave}
+              className="mr-2"
+            />
+            <Label htmlFor="autoSave" className="text-sm">Auto-save</Label>
+          </div>
+          <TemplateLibrary 
+            onAddComponent={handleAddComponent}
+            onApplyTemplate={handleApplyTemplate}
+          />
+          <Button 
+            variant="outline" 
+            onClick={handleViewLive}
+            className="flex items-center gap-2"
+          >
+            <Eye className="h-4 w-4" />
+            Voir la page
+          </Button>
           <Button 
             variant="outline" 
             onClick={handlePreview}
@@ -368,12 +539,12 @@ const DragDropEditor: React.FC<DragDropEditorProps> = ({
             Aperçu
           </Button>
           <Button 
-            onClick={handleSave} 
-            disabled={isLoading}
+            onClick={() => handleSave(false)} 
+            disabled={isSaving || !hasChanges}
             className="flex items-center gap-2"
           >
             <Save className="h-4 w-4" />
-            Enregistrer
+            {isSaving ? "Enregistrement..." : "Enregistrer"}
           </Button>
         </div>
       </div>
@@ -395,7 +566,7 @@ const DragDropEditor: React.FC<DragDropEditorProps> = ({
                 selectedId={selectedComponent?.id}
               />
               
-              {components.length === 0 && (
+              {components.length === 0 && showEmptyState && (
                 <div className="flex flex-col items-center justify-center h-40 border-2 border-dashed border-muted-foreground/20 rounded-md p-4">
                   <p className="text-muted-foreground text-center mb-4">
                     Glissez-déposez des composants depuis la palette pour créer votre page
@@ -412,6 +583,7 @@ const DragDropEditor: React.FC<DragDropEditorProps> = ({
                       };
                       setComponents([newComponent]);
                       setSelectedComponent(newComponent);
+                      setHasChanges(true);
                     }}
                     className="flex items-center gap-2"
                   >
@@ -446,18 +618,96 @@ const DragDropEditor: React.FC<DragDropEditorProps> = ({
           <DialogHeader>
             <DialogTitle>Aperçu de la page</DialogTitle>
           </DialogHeader>
-          <div 
-            className="border rounded-md p-4 mt-4 overflow-auto max-h-[60vh]"
-            dangerouslySetInnerHTML={{ __html: previewContent }}
-          />
+          <div className="border rounded-md p-4 mt-4 overflow-auto max-h-[60vh]">
+            <iframe 
+              srcDoc={previewContent}
+              className="w-full h-[60vh] border-none"
+              title="Aperçu de la page"
+            />
+          </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsPreviewOpen(false)}>
               Fermer
             </Button>
+            <Button onClick={handleViewLive}>
+              Voir la page
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      {/* Confirmation de suppression */}
+      <AlertDialog open={isConfirmDeleteOpen} onOpenChange={setIsConfirmDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer ce composant ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cette action ne peut pas être annulée. Le composant sera définitivement supprimé
+              de la page.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDeleteComponent}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
+      {/* Alerte pour les changements non enregistrés */}
+      {hasChanges && !autoSave && (
+        <div className="fixed bottom-4 right-4 bg-amber-50 text-amber-800 border border-amber-200 p-3 rounded-lg shadow-lg flex items-center gap-2 max-w-md">
+          <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0" />
+          <div className="flex-1 text-sm">
+            Vous avez des modifications non enregistrées.
+          </div>
+          <Button 
+            size="sm"
+            onClick={() => handleSave(false)}
+            className="ml-2 bg-amber-500 hover:bg-amber-600 text-white"
+          >
+            Enregistrer
+          </Button>
+        </div>
+      )}
     </div>
+  );
+};
+
+// Composant Switch manquant, ajoutons-le pour compléter le code
+const Switch = ({ id, checked, onCheckedChange, className = "" }) => {
+  return (
+    <div className={`relative inline-flex h-5 w-10 items-center rounded-full ${checked ? 'bg-primary' : 'bg-gray-300'} transition-colors ${className}`}>
+      <input
+        id={id}
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onCheckedChange(e.target.checked)}
+        className="sr-only"
+      />
+      <span
+        className={`${
+          checked ? 'translate-x-5' : 'translate-x-1'
+        } inline-block h-3 w-3 transform rounded-full bg-white transition-transform`}
+      />
+    </div>
+  );
+};
+
+// Composant Label manquant
+const Label = ({ htmlFor, children, className = "" }) => {
+  return (
+    <label
+      htmlFor={htmlFor}
+      className={`text-sm font-medium ${className}`}
+    >
+      {children}
+    </label>
   );
 };
 

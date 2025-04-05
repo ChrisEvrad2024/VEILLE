@@ -70,13 +70,12 @@ const Login = () => {
   const getRedirectPath = () => {
     // First priority: path stored in localStorage (from RequireAuth)
     const storedPath = localStorage.getItem("authRedirectPath");
-    if (storedPath) return storedPath;
-
+    
     // Second priority: from location state (React Router)
     if (location.state?.from) return location.state.from;
 
-    // Default fallback
-    return "/";
+    // Return stored path or default fallback
+    return storedPath || "/";
   };
 
   // Initialize form
@@ -105,7 +104,7 @@ const Login = () => {
 
     try {
       // Use auth adapter to login
-      const result = await authAdapter.login(data.email, data.password);
+      await authAdapter.login(data.email, data.password);
 
       // Check if user is admin to determine redirect
       const isAdmin = authAdapter.isAdmin();

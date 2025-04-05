@@ -15,21 +15,21 @@ import {
   MessageSquare,
   ShoppingCart,
   Settings,
-  Eye
+  Eye,
+  ChevronUp,
+  ChevronDown,
+  Copy
 } from 'lucide-react';
 import { ComponentItem } from './DragDropEditor';
-import BannerComponent from '../components/BannerComponent';
-import SliderComponent from '../components/SliderComponent';
-import PromotionComponent from '../components/PromotionComponent';
-import NewsletterComponent from '../components/NewsletterComponent';
-import TextComponent from '../components/TextComponent';
-import VideoComponent from '../components/VideoComponent';
-import HtmlComponent from '../components/HtmlComponent';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface DropZoneProps {
   components: ComponentItem[];
   onDelete: (id: string) => void;
   onSelect: (component: ComponentItem) => void;
+  onDuplicate?: (component: ComponentItem) => void;
+  onMoveUp?: (index: number) => void;
+  onMoveDown?: (index: number) => void;
   selectedId?: string;
 }
 
@@ -37,6 +37,9 @@ const DropZone: React.FC<DropZoneProps> = ({
   components, 
   onDelete, 
   onSelect, 
+  onDuplicate,
+  onMoveUp,
+  onMoveDown,
   selectedId 
 }) => {
   // Fonction pour obtenir l'icône correspondant au type de composant
@@ -96,19 +99,157 @@ const DropZone: React.FC<DropZoneProps> = ({
     try {
       switch (component.type) {
         case 'banner':
-          return <BannerComponent content={component.content} settings={component.settings} />;
-        case 'slider':
-          return <SliderComponent content={component.content} settings={component.settings} />;
+          return (
+            <div className="relative p-4 bg-muted/30 border rounded-md overflow-hidden">
+              <div className="relative aspect-[3/1] overflow-hidden rounded">
+                {component.content.image && (
+                  <div
+                    className="absolute inset-0 bg-cover bg-center"
+                    style={{
+                      backgroundImage: `url(${component.content.image})`,
+                    }}
+                  >
+                    <div className="absolute inset-0 bg-black bg-opacity-40"></div>
+                  </div>
+                )}
+                <div className="relative z-10 flex flex-col items-center justify-center h-full text-center p-4">
+                  <h3 className="text-lg font-bold mb-1 text-white">
+                    {component.content.title}
+                  </h3>
+                  <p className="text-sm text-white mb-2 line-clamp-1">
+                    {component.content.subtitle}
+                  </p>
+                  {component.content.buttonText && (
+                    <div className="inline-block bg-primary text-white px-3 py-1 rounded text-sm">
+                      {component.content.buttonText}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+          
         case 'promotion':
-          return <PromotionComponent content={component.content} settings={component.settings} />;
-        case 'newsletter':
-          return <NewsletterComponent content={component.content} settings={component.settings} />;
+          return (
+            <div className="relative p-4 bg-muted/30 border rounded-md overflow-hidden">
+              <div
+                className="relative overflow-hidden rounded"
+                style={{
+                  backgroundColor: component.content.backgroundColor || "#ff5252",
+                }}
+              >
+                <div className="flex p-4 text-white">
+                  {component.content.image && (
+                    <div className="w-1/3 mr-4">
+                      <img
+                        src={component.content.image}
+                        alt=""
+                        className="rounded"
+                      />
+                    </div>
+                  )}
+                  <div className="flex-1">
+                    {component.content.discount && (
+                      <div className="text-xl font-bold mb-1">
+                        {component.content.discount}
+                      </div>
+                    )}
+                    <h3 className="font-bold line-clamp-1">{component.content.title}</h3>
+                    <p className="text-sm mb-2 line-clamp-1">{component.content.subtitle}</p>
+                    {component.content.ctaText && (
+                      <div className="inline-block bg-white text-black px-2 py-1 rounded text-xs">
+                        {component.content.ctaText}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                {component.settings.showBadge && (
+                  <div className="absolute top-0 right-0 bg-red-600 text-white text-xs px-2 py-1 font-bold">
+                    {component.settings.badgeText || "PROMO"}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+          
+        case 'slider':
+          return (
+            <div className="relative p-4 bg-muted/30 border rounded-md overflow-hidden">
+              <div className="relative aspect-[3/1] overflow-hidden rounded">
+                {component.content.slides && component.content.slides.length > 0 && (
+                  <>
+                    <div
+                      className="absolute inset-0 bg-cover bg-center"
+                      style={{
+                        backgroundImage: `url(${component.content.slides[0].image})`,
+                      }}
+                    >
+                      <div className="absolute inset-0 bg-black bg-opacity-40"></div>
+                    </div>
+                    <div className="relative z-10 flex flex-col items-center justify-center h-full text-center p-4">
+                      <h3 className="text-lg font-bold mb-1 text-white line-clamp-1">
+                        {component.content.slides[0].title}
+                      </h3>
+                      <p className="text-sm text-white mb-2 line-clamp-1">
+                        {component.content.slides[0].description}
+                      </p>
+                    </div>
+                    {component.content.slides.length > 1 && (
+                      <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1">
+                        {component.content.slides.map((_: any, i: number) => (
+                          <div
+                            key={i}
+                            className={`w-2 h-2 rounded-full ${
+                              i === 0 ? 'bg-white' : 'bg-white/50'
+                            }`}
+                          ></div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          );
+          
         case 'text':
-          return <TextComponent content={component.content} settings={component.settings} />;
-        case 'video':
-          return <VideoComponent content={component.content} settings={component.settings} />;
-        case 'html':
-          return <HtmlComponent content={component.content} settings={component.settings} />;
+          return (
+            <div className="relative p-4 bg-muted/30 border rounded-md overflow-hidden">
+              <div className="prose prose-sm max-w-none">
+                <h3 className="text-lg font-bold mb-2">
+                  {component.content.title || "Titre du contenu"}
+                </h3>
+                <div className="line-clamp-3 text-sm text-muted-foreground">
+                  {component.content.text ? (
+                    <div dangerouslySetInnerHTML={{ __html: component.content.text }} />
+                  ) : (
+                    "Contenu textuel..."
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+          
+        case 'newsletter':
+          return (
+            <div className="relative p-4 bg-muted/30 border rounded-md overflow-hidden">
+              <div className="text-center py-4">
+                <h3 className="text-lg font-bold mb-2">
+                  {component.content.title || "Inscrivez-vous à notre newsletter"}
+                </h3>
+                <p className="text-sm mb-4 text-muted-foreground line-clamp-1">
+                  {component.content.description || "Restez informé de nos dernières offres"}
+                </p>
+                <div className="flex items-center justify-center gap-2">
+                  <div className="h-8 bg-background rounded border border-input w-40"></div>
+                  <div className="h-8 bg-primary text-white px-4 rounded flex items-center justify-center text-sm">
+                    {component.content.buttonText || "S'abonner"}
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+          
         default:
           return (
             <div className="flex items-center justify-center h-20 bg-muted/30 rounded-md">
@@ -176,32 +317,103 @@ const DropZone: React.FC<DropZoneProps> = ({
                         </div>
                       </div>
                       <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7"
-                          onClick={() => onSelect(component)}
-                          title="Éditer"
-                        >
-                          <Settings className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 hover:text-destructive"
-                          onClick={() => onDelete(component.id)}
-                          title="Supprimer"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
+                        <TooltipProvider>
+                          {onMoveUp && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  onClick={() => onMoveUp(index)}
+                                  disabled={index === 0}
+                                >
+                                  <ChevronUp className="h-3.5 w-3.5" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Déplacer vers le haut</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                          
+                          {onMoveDown && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  onClick={() => onMoveDown(index)}
+                                  disabled={index === components.length - 1}
+                                >
+                                  <ChevronDown className="h-3.5 w-3.5" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Déplacer vers le bas</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                          
+                          {onDuplicate && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  onClick={() => onDuplicate(component)}
+                                >
+                                  <Copy className="h-3.5 w-3.5" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Dupliquer</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                          
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7"
+                                onClick={() => onSelect(component)}
+                              >
+                                <Settings className="h-3.5 w-3.5" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Éditer</p>
+                            </TooltipContent>
+                          </Tooltip>
+                          
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 hover:text-destructive"
+                                onClick={() => onDelete(component.id)}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Supprimer</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       </div>
                     </div>
                     <div 
-                      className="p-3 border-l-2 transition-colors cursor-pointer"
+                      className="p-3 border-l-2 transition-colors cursor-pointer hover:bg-muted/20"
                       style={{ borderLeftColor: selectedId === component.id ? 'var(--primary)' : 'transparent' }}
                       onClick={() => onSelect(component)}
                     >
-                      <div className="overflow-hidden max-h-80">
+                      <div className="overflow-hidden max-h-60">
                         {renderComponentPreview(component)}
                       </div>
                     </div>
